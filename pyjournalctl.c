@@ -13,7 +13,7 @@ static void
 Journalctl_dealloc(Journalctl* self)
 {
     sd_journal_close(self->j);
-    self->ob_type->tp_free((PyObject*)self);
+    Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 static int
@@ -69,7 +69,11 @@ Journalctl_get_next(Journalctl *self, PyObject *args)
 
     SD_JOURNAL_FOREACH_DATA(self->j, msg, msg_len) {
         delim_ptr = memchr(msg, '=', msg_len);
+#if PY_MAJOR_VERSION >=3
+        PyDict_SetItem(dict, PyUnicode_FromStringAndSize(msg, delim_ptr - (const char*) msg), PyUnicode_FromStringAndSize(delim_ptr + 1, (const char*) msg + msg_len - (delim_ptr + 1)));
+#else
         PyDict_SetItem(dict, PyString_FromStringAndSize(msg, delim_ptr - (const char*) msg), PyString_FromStringAndSize(delim_ptr + 1, (const char*) msg + msg_len - (delim_ptr + 1)));
+#endif
     }
     return dict;
 }
@@ -175,8 +179,7 @@ static PyMethodDef Journalctl_methods[] = {
 };
 
 static PyTypeObject JournalctlType = {
-    PyObject_HEAD_INIT(NULL)
-    0,                                /*ob_size*/
+    PyVarObject_HEAD_INIT(NULL, 0)
     "pyjournalctl.Journalctl",        /*tp_name*/
     sizeof(Journalctl),               /*tp_basicsize*/
     0,                                /*tp_itemsize*/
@@ -216,19 +219,46 @@ static PyTypeObject JournalctlType = {
     PyType_GenericNew,                /* tp_new */
 };
 
+#if PY_MAJOR_VERSION >= 3
+static PyModuleDef pyjournalctl_module = {
+    PyModuleDef_HEAD_INIT,
+    "pyjournalctl",
+    "Module that interfaces with journalctl.",
+    -1,
+    NULL, NULL, NULL, NULL, NULL
+};
+#endif
+
 PyMODINIT_FUNC
+#if PY_MAJOR_VERSION >= 3
+PyInit_pyjournalctl(void)
+#else
 initpyjournalctl(void) 
+#endif
 {
     PyObject* m;
 
     if (PyType_Ready(&JournalctlType) < 0)
+#if PY_MAJOR_VERSION >= 3
+        return NULL;
+#else
         return;
+#endif
 
+#if PY_MAJOR_VERSION >= 3
+    m = PyModule_Create(&pyjournalctl_module);
+    if (m == NULL)
+        return NULL;
+#else
     m = Py_InitModule3("pyjournalctl", NULL,
                        "Module that interfaces with journalctl.");
     if (m == NULL)
         return;
+#endif
 
     Py_INCREF(&JournalctlType);
     PyModule_AddObject(m, "Journalctl", (PyObject *)&JournalctlType);
+#if PY_MAJOR_VERSION >= 3
+    return m;
+#endif
 }
