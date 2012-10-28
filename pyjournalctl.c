@@ -158,6 +158,26 @@ Journalctl_seek(Journalctl *self, PyObject *args, PyObject *keywds)
     Py_RETURN_NONE;
 }
 
+static PyObject *
+Journalctl_wait(Journalctl *self, PyObject *args, PyObject *keywds)
+{
+    int64_t timeout=0LL;
+    if (! PyArg_ParseTuple(args, "|L", &timeout))
+        return NULL;
+
+    int r;
+    if ( timeout == 0LL) {
+        r = sd_journal_wait(self->j, (uint64_t) -1);
+    }else{
+        r = sd_journal_wait(self->j, timeout * 1E6);
+    }
+#if PY_MAJOR_VERSION >=3
+    return PyLong_FromLong(r);
+#else
+    return PyInt_FromLong(r);
+#endif
+}
+
 static PyMemberDef Journalctl_members[] = {
     {NULL}  /* Sentinel */
 };
@@ -175,6 +195,8 @@ static PyMethodDef Journalctl_methods[] = {
     "Clear match filter"},
     {"seek", (PyCFunction)Journalctl_seek, METH_VARARGS | METH_KEYWORDS,
     "Seek through journal"},
+    {"wait", (PyCFunction)Journalctl_wait, METH_VARARGS,
+    "Block for number of seconds or until new log entry. 0 seconds waits indefinitely"},
     {NULL}  /* Sentinel */
 };
 
@@ -259,6 +281,13 @@ initpyjournalctl(void)
     Py_INCREF(&JournalctlType);
     PyModule_AddObject(m, "Journalctl", (PyObject *)&JournalctlType);
 #if PY_MAJOR_VERSION >= 3
+    PyModule_AddObject(m, "SD_JOURNAL_NOP", PyLong_FromLong(SD_JOURNAL_NOP));
+    PyModule_AddObject(m, "SD_JOURNAL_APPEND", PyLong_FromLong(SD_JOURNAL_APPEND));
+    PyModule_AddObject(m, "SD_JOURNAL_INVALIDATE", PyLong_FromLong(SD_JOURNAL_INVALIDATE));
     return m;
+#else
+    PyModule_AddObject(m, "SD_JOURNAL_NOP", PyInt_FromLong(SD_JOURNAL_NOP));
+    PyModule_AddObject(m, "SD_JOURNAL_APPEND", PyInt_FromLong(SD_JOURNAL_APPEND));
+    PyModule_AddObject(m, "SD_JOURNAL_INVALIDATE", PyInt_FromLong(SD_JOURNAL_INVALIDATE));
 #endif
 }
