@@ -221,6 +221,36 @@ Journalctl_wait(Journalctl *self, PyObject *args, PyObject *keywds)
 #endif
 }
 
+static PyObject *
+Journalctl_get_cursor(Journalctl *self, PyObject *args)
+{
+    char *cursor;
+    if (sd_journal_get_cursor(self->j, &cursor) < 0) { //Should return 0...
+        PyErr_SetString(PyExc_IOError, "Error getting cursor");
+        return NULL;
+    }
+
+#if PY_MAJOR_VERSION >=3
+    return PyUnicode_FromString(cursor);
+#else
+    return PyString_FromString(cursor);
+#endif
+}
+
+static PyObject *
+Journalctl_seek_cursor(Journalctl *self, PyObject *args)
+{
+    const char *cursor;
+    if (! PyArg_ParseTuple(args, "s", &cursor))
+        return NULL;
+
+    if (sd_journal_seek_cursor(self->j, cursor) != 0) {
+        PyErr_SetString(PyExc_IOError, "Error seeking to cursor");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
 static PyMemberDef Journalctl_members[] = {
     {NULL}  /* Sentinel */
 };
@@ -242,6 +272,10 @@ static PyMethodDef Journalctl_methods[] = {
     "Seek through journal"},
     {"wait", (PyCFunction)Journalctl_wait, METH_VARARGS,
     "Block for number of seconds or until new log entry. 0 seconds waits indefinitely"},
+    {"get_cursor", (PyCFunction)Journalctl_get_cursor, METH_NOARGS,
+    "Get unique reference cursor for current entry"},
+    {"seek_cursor", (PyCFunction)Journalctl_seek_cursor, METH_VARARGS,
+    "Seek to log entry for given unique reference cursor"},
     {NULL}  /* Sentinel */
 };
 
