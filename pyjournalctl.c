@@ -170,14 +170,14 @@ static PyObject *
 Journalctl_seek(Journalctl *self, PyObject *args, PyObject *keywds)
 {
     int64_t offset;
-    int whence=SEEK_CUR;
+    int whence=SEEK_SET;
     static char *kwlist[] = {"offset", "whence", NULL};
 
     if (! PyArg_ParseTupleAndKeywords(args, keywds, "L|i", kwlist,
                                       &offset, &whence))
         return NULL;
 
-    if (whence == SEEK_CUR){
+    if (whence == SEEK_SET){
         if (sd_journal_seek_head(self->j) !=0 ) {
             PyErr_SetString(PyExc_IOError, "Error seeking to head");
             return NULL;
@@ -191,7 +191,9 @@ Journalctl_seek(Journalctl *self, PyObject *args, PyObject *keywds)
             PyErr_SetString(PyExc_IOError, "Error seeking to tail");
             return NULL;
         }
-        Journalctl_get_previous(self, Py_BuildValue("(L)", offset+1));
+        Journalctl_get_next(self, Py_BuildValue("(L)", -1LL));
+        if (offset < 0LL)
+            Journalctl_get_next(self, Py_BuildValue("(L)", offset));
     }else{
         PyErr_SetString(PyExc_IOError, "Invalid value for whence");
         return NULL;
