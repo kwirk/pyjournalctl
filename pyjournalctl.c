@@ -91,10 +91,20 @@ Journalctl_get_previous(Journalctl *self, PyObject *args)
 static PyObject *
 Journalctl_add_match(Journalctl *self, PyObject *args)
 {
+    char *match_key, *match_value=NULL;
+    int match_key_len, match_value_len;
+    if (! PyArg_ParseTuple(args, "s#|s#", &match_key, &match_key_len, &match_value, &match_value_len))
+        return NULL;
+
     char *match;
     int match_len;
-    if (! PyArg_ParseTuple(args, "s#", &match, &match_len))
-        return NULL;
+    if (match_value) {
+        match = malloc(match_key_len + match_value_len + 2);
+        match_len = sprintf(match, "%s=%s", match_key, match_value);
+    }else{
+        match = match_key;
+        match_len = match_key_len;
+    }
 
     if (sd_journal_add_match(self->j, match, match_len) != 0) {
         PyErr_SetString(PyExc_IOError, "Error adding match");
