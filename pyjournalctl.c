@@ -115,6 +115,37 @@ Journalctl_add_match(Journalctl *self, PyObject *args)
 }
 
 static PyObject *
+Journalctl_add_matches(Journalctl *self, PyObject *args)
+{
+    PyObject *dict;
+    if (! PyArg_ParseTuple(args, "O", &dict))
+        return NULL;
+    if (!PyDict_Check(dict)) {
+        PyErr_SetString(PyExc_ValueError, "Argument must be dictionary type");
+        return NULL;
+    }
+
+    // First must check all are strings
+    Py_ssize_t pos=0;
+    PyObject *key, *value;
+    while (PyDict_Next(dict, &pos, &key, &value)) {
+#if PY_MAJOR_VERSION >=3
+        if (!(PyUnicode_Check(key) && PyUnicode_Check(value))) {
+#else
+        if (!(PyString_Check(key) && PyString_Check(value))) {
+#endif
+            PyErr_SetString(PyExc_ValueError, "Dictionary keys and values must be strings");
+            return NULL;
+        }
+    }
+    pos = 0; //Back to start of dictionary
+    while (PyDict_Next(dict, &pos, &key, &value))
+        Journalctl_add_match(self, Py_BuildValue("OO", key, value));
+
+    Py_RETURN_NONE;
+}
+
+static PyObject *
 Journalctl_add_disjunction(Journalctl *self, PyObject *args)
 {
     if (sd_journal_add_disjunction(self->j) != 0) {
@@ -199,6 +230,8 @@ static PyMethodDef Journalctl_methods[] = {
     "Get previous message"},
     {"add_match", (PyCFunction)Journalctl_add_match, METH_VARARGS,
     "Add an 'and' match filter"},
+    {"add_matches", (PyCFunction)Journalctl_add_matches, METH_VARARGS,
+    "Adds multiple 'and' match filters"},
     {"add_disjunction", (PyCFunction)Journalctl_add_disjunction, METH_NOARGS,
     "Add an 'or' match filter"},
     {"flush_matches", (PyCFunction)Journalctl_flush_matches, METH_NOARGS,
