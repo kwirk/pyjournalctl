@@ -3,7 +3,7 @@ from distutils.core import setup, Extension
 setup(name="pyjournalctl",
       description="A module that reads systemd journal similar to journalctl",
       long_description=open("README.rst").read(),
-      version="0.1",
+      version="0.1.1",
       ext_modules=[Extension("pyjournalctl", ["pyjournalctl.c"],
                    libraries=["systemd-journal"])],
       author="Steven Hiscocks",
