@@ -251,6 +251,31 @@ Journalctl_seek_cursor(Journalctl *self, PyObject *args)
     Py_RETURN_NONE;
 }
 
+static PyObject *
+Journalctl_iter(PyObject *self)
+{
+    Py_INCREF(self);
+    return self;
+}
+
+static PyObject *
+Journalctl_iternext(PyObject *self)
+{
+    Journalctl *iter = (Journalctl *)self;
+    PyObject *dict;
+    Py_ssize_t dict_size;
+
+    dict = Journalctl_get_next(iter, Py_BuildValue("()"));
+    dict_size = PyDict_Size(dict);
+    if ((int64_t) dict_size > 0LL) {
+        return dict;
+    }else{
+        Py_DECREF(dict);
+        PyErr_SetNone(PyExc_StopIteration);
+        return NULL;
+    }
+}
+
 static PyMemberDef Journalctl_members[] = {
     {NULL}  /* Sentinel */
 };
@@ -305,8 +330,8 @@ static PyTypeObject JournalctlType = {
     0,                                /* tp_clear */
     0,                                /* tp_richcompare */
     0,                                /* tp_weaklistoffset */
-    0,                                /* tp_iter */
-    0,                                /* tp_iternext */
+    Journalctl_iter,                  /* tp_iter */
+    Journalctl_iternext,              /* tp_iternext */
     Journalctl_methods,               /* tp_methods */
     Journalctl_members,               /* tp_members */
     0,                                /* tp_getset */
