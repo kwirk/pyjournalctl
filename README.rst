@@ -61,6 +61,11 @@ True
 >>> priorities = set(range(2,6))
 >>> for priority in priorities:
 ...     # Items of the same field name are automatically 'or'ed
-...     journal.add_match("PRIORITY=%i" % priority) # Items of same key are
+...     journal.add_match("PRIORITY=%i" % priority)
 >>> priorities >= set(int(entry['PRIORITY']) for entry in journal)
+True
+>>> systemd_units = journal.query_unique("_SYSTEMD_UNIT")
+>>> "Unique systemd units in journal: %s" % ', '.join(systemd_units) # doctest: +ELLIPSIS
+'Unique systemd units in journal: ...'
+>>> len(systemd_units) == len(set(systemd_units))
 True
