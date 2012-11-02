@@ -294,6 +294,38 @@ Journalctl_iternext(PyObject *self)
     }
 }
 
+#ifdef SD_JOURNAL_FOREACH_UNIQUE
+static PyObject *
+Journalctl_query_unique(Journalctl *self, PyObject *args)
+{
+    char *query;
+    if (! PyArg_ParseTuple(args, "s", &query))
+        return NULL;
+
+    PyObject *list;
+    list = PyList_New(0);
+
+    if (sd_journal_query_unique(self->j, query) != 0) {
+        PyErr_SetString(PyExc_IOError, "Error querying journal");
+        return NULL;
+    }
+
+    const void *uniq;
+    size_t uniq_len;
+    const char *delim_ptr;
+
+    SD_JOURNAL_FOREACH_UNIQUE(self->j, uniq, uniq_len) {
+        delim_ptr = memchr(uniq, '=', uniq_len);
+#if PY_MAJOR_VERSION >=3
+        PyList_Append(list, PyUnicode_FromStringAndSize(delim_ptr + 1, (const char*) uniq + uniq_len - (delim_ptr + 1)));
+#else
+        PyList_Append(list, PyString_FromStringAndSize(delim_ptr + 1, (const char*) uniq + uniq_len - (delim_ptr + 1)));
+#endif //def SD_JOURNAL_FOREACH_UNIQUE
+    }
+    return list;
+}
+#endif
+
 static PyMemberDef Journalctl_members[] = {
     {NULL}  /* Sentinel */
 };
@@ -319,6 +351,10 @@ static PyMethodDef Journalctl_methods[] = {
     "Get unique reference cursor for current entry"},
     {"seek_cursor", (PyCFunction)Journalctl_seek_cursor, METH_VARARGS,
     "Seek to log entry for given unique reference cursor"},
+#ifdef SD_JOURNAL_FOREACH_UNIQUE
+    {"query_unique", (PyCFunction)Journalctl_query_unique, METH_VARARGS,
+    "Get unique values for given field name"},
+#endif
     {NULL}  /* Sentinel */
 };
 
