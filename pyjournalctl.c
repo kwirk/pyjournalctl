@@ -124,6 +124,15 @@ Journalctl_get_next(Journalctl *self, PyObject *args)
         }
     }
 
+    char *cursor;
+    if (sd_journal_get_cursor(self->j, &cursor) > 0) { //Should return 0...
+#if PY_MAJOR_VERSION >=3
+        PyDict_SetItem(dict, PyUnicode_FromString("__CURSOR"), PyUnicode_FromString(cursor));
+#else
+        PyDict_SetItem(dict, PyString_FromString("__CURSOR"), PyString_FromString(cursor));
+#endif
+    }
+
     return dict;
 }
 
@@ -314,22 +323,6 @@ Journalctl_wait(Journalctl *self, PyObject *args, PyObject *keywds)
 }
 
 static PyObject *
-Journalctl_get_cursor(Journalctl *self, PyObject *args)
-{
-    char *cursor;
-    if (sd_journal_get_cursor(self->j, &cursor) < 0) { //Should return 0...
-        PyErr_SetString(PyExc_IOError, "Error getting cursor");
-        return NULL;
-    }
-
-#if PY_MAJOR_VERSION >=3
-    return PyUnicode_FromString(cursor);
-#else
-    return PyString_FromString(cursor);
-#endif
-}
-
-static PyObject *
 Journalctl_seek_cursor(Journalctl *self, PyObject *args)
 {
     const char *cursor;
@@ -425,8 +418,6 @@ static PyMethodDef Journalctl_methods[] = {
     "Seek to nearest log entry to given monotonic time in usecs and given bootid"},
     {"wait", (PyCFunction)Journalctl_wait, METH_VARARGS,
     "Block for number of seconds or until new log entry. 0 seconds waits indefinitely"},
-    {"get_cursor", (PyCFunction)Journalctl_get_cursor, METH_NOARGS,
-    "Get unique reference cursor for current entry"},
     {"seek_cursor", (PyCFunction)Journalctl_seek_cursor, METH_VARARGS,
     "Seek to log entry for given unique reference cursor"},
 #ifdef SD_JOURNAL_FOREACH_UNIQUE

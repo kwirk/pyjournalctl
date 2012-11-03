@@ -41,20 +41,19 @@ Usage Examples
 ...     entry.get('PRIORITY') == "5" and entry.get("_UID") == "0")
 True
 >>>
->>> cursor = journal.get_cursor() # Cursor is unique reference
+>>> cursor = entry['__CURSOR'] # Cursor is unique reference
 >>> cursor # doctest: +ELLIPSIS
 '...'
 >>> journal.flush_matches()
 >>> journal.seek(0,2) # End of journal
 >>> entry2 = journal.get_previous()
->>> journal.get_cursor() == cursor
+>>> entry2['__CURSOR'] == cursor
 False
 >>> entry2 == entry
 False
 >>> journal.seek_cursor(cursor) # Seek to unique reference
 >>> journal.get_next() == entry
 True
->>> journal.get_cursor() == cursor
 >>> realtime = int(entry['__REALTIME_TIMESTAMP'])
 >>> journal.get_next(10) == entry
 False
