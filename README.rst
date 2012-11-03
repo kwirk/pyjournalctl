@@ -78,3 +78,7 @@ True
 'Unique systemd units in journal: ...'
 >>> len(systemd_units) == len(set(systemd_units))
 True
+
+TODO
+----
+* Still seem to be some memory leaks...
