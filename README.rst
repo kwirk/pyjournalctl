@@ -55,6 +55,18 @@ False
 >>> journal.get_next() == entry
 True
 >>> journal.get_cursor() == cursor
+>>> realtime = int(entry['__REALTIME_TIMESTAMP'])
+>>> journal.get_next(10) == entry
+False
+>>> journal.seek_realtime(realtime)
+>>> journal.get_next() == entry
+True
+>>> monotonic = int(entry['__MONOTONIC_TIMESTAMP'])
+>>> bootid = entry['_BOOT_ID']
+>>> journal.get_next(5) == entry
+False
+>>> journal.seek_monotonic(monotonic, bootid)
+>>> journal.get_next() == entry
 True
 >>> journal.flush_matches()
 >>> journal.seek(-1000,2) # Last 1000 entries

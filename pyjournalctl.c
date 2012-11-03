@@ -93,6 +93,37 @@ Journalctl_get_next(Journalctl *self, PyObject *args)
         PyDict_SetItem(dict, PyString_FromStringAndSize(msg, delim_ptr - (const char*) msg), PyString_FromStringAndSize(delim_ptr + 1, (const char*) msg + msg_len - (delim_ptr + 1)));
 #endif
     }
+
+    uint64_t realtime;
+    if (sd_journal_get_realtime_usec(self->j, &realtime) == 0) {
+#if PY_MAJOR_VERSION >=3
+        PyDict_SetItem(dict, PyUnicode_FromString("__REALTIME_TIMESTAMP"), PyUnicode_FromFormat("%llu", realtime));
+#else
+        PyDict_SetItem(dict, PyString_FromString("__REALTIME_TIMESTAMP"), PyString_FromFormat("%llu", realtime));
+#endif
+    }
+
+    char *bootid;
+    sd_id128_t sd_id;
+#if PY_MAJOR_VERSION >=3
+    PyObject *temp;
+    temp = PyUnicode_AsASCIIString(PyDict_GetItemString(dict, "_BOOT_ID"));
+    bootid = PyBytes_AsString(temp);
+    Py_DECREF(temp);
+#else
+    bootid = PyString_AsString(PyDict_GetItemString(dict, "_BOOT_ID"));
+#endif
+    if (sd_id128_from_string(bootid, &sd_id) == 0) {
+        uint64_t monotonic;
+        if (sd_journal_get_monotonic_usec(self->j, &monotonic, &sd_id) == 0) {
+#if PY_MAJOR_VERSION >=3
+            PyDict_SetItem(dict, PyUnicode_FromString("__MONOTONIC_TIMESTAMP"), PyUnicode_FromFormat("%llu", monotonic));
+#else
+            PyDict_SetItem(dict, PyString_FromString("__MONOTONIC_TIMESTAMP"), PyString_FromFormat("%llu", monotonic));
+#endif
+        }
+    }
+
     return dict;
 }
 
@@ -214,6 +245,49 @@ Journalctl_seek(Journalctl *self, PyObject *args, PyObject *keywds)
             Journalctl_get_next(self, Py_BuildValue("(L)", offset));
     }else{
         PyErr_SetString(PyExc_IOError, "Invalid value for whence");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject *
+Journalctl_seek_realtime(Journalctl *self, PyObject *args)
+{
+    int64_t time;
+    if (! PyArg_ParseTuple(args, "L", &time))
+        return NULL;
+    if (time < 0LL) {
+        PyErr_SetString(PyExc_ValueError, "Time must be positive integer");
+        return NULL;
+    }
+
+    if (sd_journal_seek_realtime_usec(self->j, time) != 0) {
+        PyErr_SetString(PyExc_IOError, "Error seek to time");
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject *
+Journalctl_seek_monotonic(Journalctl *self, PyObject *args)
+{
+    int64_t time;
+    char *bootid;
+    if (! PyArg_ParseTuple(args, "Ls", &time, &bootid))
+        return NULL;
+    if (time < 0LL) {
+        PyErr_SetString(PyExc_ValueError, "Time must be positive integer");
+        return NULL;
+    }
+
+    sd_id128_t sd_id;
+    if (sd_id128_from_string(bootid, &sd_id) == 0) {
+        if (sd_journal_seek_monotonic_usec(self->j, sd_id, time) != 0) {
+            PyErr_SetString(PyExc_IOError, "Error seek to time");
+            return NULL;
+        }
+    }else{
+        PyErr_SetString(PyExc_ValueError, "Invalid bootid");
         return NULL;
     }
     Py_RETURN_NONE;
@@ -345,6 +419,10 @@ static PyMethodDef Journalctl_methods[] = {
     "Clear match filter"},
     {"seek", (PyCFunction)Journalctl_seek, METH_VARARGS | METH_KEYWORDS,
     "Seek through journal"},
+    {"seek_realtime", (PyCFunction)Journalctl_seek_realtime, METH_VARARGS,
+    "Seek to nearest log entry to given time in usecs"},
+    {"seek_monotonic", (PyCFunction)Journalctl_seek_monotonic, METH_VARARGS,
+    "Seek to nearest log entry to given monotonic time in usecs and given bootid"},
     {"wait", (PyCFunction)Journalctl_wait, METH_VARARGS,
     "Block for number of seconds or until new log entry. 0 seconds waits indefinitely"},
     {"get_cursor", (PyCFunction)Journalctl_get_cursor, METH_NOARGS,
