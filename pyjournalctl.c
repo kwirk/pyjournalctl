@@ -438,6 +438,29 @@ Journalctl_query_unique(Journalctl *self, PyObject *args)
 }
 #endif //def SD_JOURNAL_FOREACH_UNIQUE
 
+static PyObject *
+Journalctl_log_level(Journalctl *self, PyObject *args)
+{
+    int level;
+    if (! PyArg_ParseTuple(args, "i", &level))
+        return NULL;
+
+    if (level < 0 || level > 7) {
+        PyErr_SetString(PyExc_ValueError, "Log level should be 0 <= level <= 7");
+        return NULL;
+    }
+    int i;
+    char level_str[2];
+    PyObject *arg;
+    for(i = 0; i <= level; i++) {
+        sprintf(level_str, "%i", i);
+        arg = Py_BuildValue("(ss)", "PRIORITY", level_str);
+        Journalctl_add_match(self, arg);
+        Py_DECREF(arg);
+    }
+    Py_RETURN_NONE;
+}
+
 static PyMemberDef Journalctl_members[] = {
     {NULL}  /* Sentinel */
 };
@@ -469,6 +492,8 @@ static PyMethodDef Journalctl_methods[] = {
     {"query_unique", (PyCFunction)Journalctl_query_unique, METH_VARARGS,
     "Get unique values for given field name"},
 #endif
+    {"log_level", (PyCFunction)Journalctl_log_level, METH_VARARGS,
+    "Set maximum log level by adding match for PRIORITY"},
     {NULL}  /* Sentinel */
 };
 

@@ -69,10 +69,8 @@ False
 True
 >>> journal.flush_matches()
 >>> journal.seek(-1000,2) # Last 1000 entries
->>> priorities = set(range(2,6))
->>> for priority in priorities:
-...     # Items of the same field name are automatically 'or'ed
-...     journal.add_match("PRIORITY=%i" % priority)
+>>> priorities = set(range(0,5))
+>>> journal.log_level(4) # Log level from 0 - 4
 >>> priorities >= set(int(entry['PRIORITY']) for entry in journal)
 True
 >>> systemd_units = journal.query_unique("_SYSTEMD_UNIT")
