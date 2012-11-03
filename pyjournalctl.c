@@ -84,23 +84,34 @@ Journalctl_get_next(Journalctl *self, PyObject *args)
     const void *msg;
     size_t msg_len;
     const char *delim_ptr;
+    PyObject *key, *value;
 
     SD_JOURNAL_FOREACH_DATA(self->j, msg, msg_len) {
         delim_ptr = memchr(msg, '=', msg_len);
 #if PY_MAJOR_VERSION >=3
-        PyDict_SetItem(dict, PyUnicode_FromStringAndSize(msg, delim_ptr - (const char*) msg), PyUnicode_FromStringAndSize(delim_ptr + 1, (const char*) msg + msg_len - (delim_ptr + 1)));
+        key = PyUnicode_FromStringAndSize(msg, delim_ptr - (const char*) msg);
+        value = PyUnicode_FromStringAndSize(delim_ptr + 1, (const char*) msg + msg_len - (delim_ptr + 1));
 #else
-        PyDict_SetItem(dict, PyString_FromStringAndSize(msg, delim_ptr - (const char*) msg), PyString_FromStringAndSize(delim_ptr + 1, (const char*) msg + msg_len - (delim_ptr + 1)));
+        key = PyString_FromStringAndSize(msg, delim_ptr - (const char*) msg);
+        value = PyString_FromStringAndSize(delim_ptr + 1, (const char*) msg + msg_len - (delim_ptr + 1));
 #endif
+        PyDict_SetItem(dict, key, value);
+        Py_DECREF(key);
+        Py_DECREF(value);
     }
 
     uint64_t realtime;
     if (sd_journal_get_realtime_usec(self->j, &realtime) == 0) {
 #if PY_MAJOR_VERSION >=3
-        PyDict_SetItem(dict, PyUnicode_FromString("__REALTIME_TIMESTAMP"), PyUnicode_FromFormat("%llu", realtime));
+        key = PyUnicode_FromString("__REALTIME_TIMESTAMP");
+        value = PyUnicode_FromFormat("%llu", realtime);
 #else
-        PyDict_SetItem(dict, PyString_FromString("__REALTIME_TIMESTAMP"), PyString_FromFormat("%llu", realtime));
+        key = PyString_FromString("__REALTIME_TIMESTAMP");
+        value = PyString_FromFormat("%llu", realtime);
 #endif
+        PyDict_SetItem(dict, key, value);
+        Py_DECREF(key);
+        Py_DECREF(value);
     }
 
     char *bootid;
@@ -117,20 +128,30 @@ Journalctl_get_next(Journalctl *self, PyObject *args)
         uint64_t monotonic;
         if (sd_journal_get_monotonic_usec(self->j, &monotonic, &sd_id) == 0) {
 #if PY_MAJOR_VERSION >=3
-            PyDict_SetItem(dict, PyUnicode_FromString("__MONOTONIC_TIMESTAMP"), PyUnicode_FromFormat("%llu", monotonic));
+            key = PyUnicode_FromString("__MONOTONIC_TIMESTAMP");
+            value = PyUnicode_FromFormat("%llu", monotonic);
 #else
-            PyDict_SetItem(dict, PyString_FromString("__MONOTONIC_TIMESTAMP"), PyString_FromFormat("%llu", monotonic));
+            key = PyString_FromString("__MONOTONIC_TIMESTAMP");
+            value = PyString_FromFormat("%llu", monotonic);
 #endif
+            PyDict_SetItem(dict, key, value);
+            Py_DECREF(key);
+            Py_DECREF(value);
         }
     }
 
     char *cursor;
     if (sd_journal_get_cursor(self->j, &cursor) > 0) { //Should return 0...
 #if PY_MAJOR_VERSION >=3
-        PyDict_SetItem(dict, PyUnicode_FromString("__CURSOR"), PyUnicode_FromString(cursor));
+        key = PyUnicode_FromString("__CURSOR");
+        value = PyUnicode_FromString(cursor);
 #else
-        PyDict_SetItem(dict, PyString_FromString("__CURSOR"), PyString_FromString(cursor));
+        key = PyString_FromString("__CURSOR");
+        value = PyString_FromString(cursor);
 #endif
+        PyDict_SetItem(dict, key, value);
+        Py_DECREF(key);
+        Py_DECREF(value);
     }
 
     return dict;
@@ -143,7 +164,11 @@ Journalctl_get_previous(Journalctl *self, PyObject *args)
     if (! PyArg_ParseTuple(args, "|L", &skip))
         return NULL;
 
-    return Journalctl_get_next(self, Py_BuildValue("(L)", -skip));
+    PyObject *dict, *arg;
+    arg = Py_BuildValue("(L)", -skip);
+    dict = Journalctl_get_next(self, arg);
+    Py_DECREF(arg);
+    return dict;
 }
 
 static PyObject *
@@ -179,6 +204,7 @@ Journalctl_add_matches(Journalctl *self, PyObject *args)
     if (! PyArg_ParseTuple(args, "O", &dict))
         return NULL;
     if (!PyDict_Check(dict)) {
+        Py_XDECREF(dict);
         PyErr_SetString(PyExc_ValueError, "Argument must be dictionary type");
         return NULL;
     }
@@ -197,9 +223,14 @@ Journalctl_add_matches(Journalctl *self, PyObject *args)
         }
     }
     pos = 0; //Back to start of dictionary
-    while (PyDict_Next(dict, &pos, &key, &value))
-        Journalctl_add_match(self, Py_BuildValue("OO", key, value));
+    PyObject *arg;
+    while (PyDict_Next(dict, &pos, &key, &value)) {
+        arg = Py_BuildValue("OO", key, value);
+        Journalctl_add_match(self, arg);
+        Py_DECREF(arg);
+    }
 
+    Py_DECREF(dict);
     Py_RETURN_NONE;
 }
 
@@ -235,23 +266,34 @@ Journalctl_seek(Journalctl *self, PyObject *args, PyObject *keywds)
                                       &offset, &whence))
         return NULL;
 
+    PyObject *arg;
     if (whence == SEEK_SET){
         if (sd_journal_seek_head(self->j) !=0 ) {
             PyErr_SetString(PyExc_IOError, "Error seeking to head");
             return NULL;
         }
-        if (offset > 0LL)
-            Journalctl_get_next(self, Py_BuildValue("(L)", offset));
+        if (offset > 0LL) {
+            arg = Py_BuildValue("(L)", offset);
+            Py_DECREF(Journalctl_get_next(self, arg));
+            Py_DECREF(arg);
+        }
     }else if (whence == SEEK_CUR){
-        Journalctl_get_next(self, Py_BuildValue("(L)", offset));
+        arg = Py_BuildValue("(L)", offset);
+        Py_DECREF(Journalctl_get_next(self, arg));
+        Py_DECREF(arg);
     }else if (whence == SEEK_END){
         if (sd_journal_seek_tail(self->j) != 0) {
             PyErr_SetString(PyExc_IOError, "Error seeking to tail");
             return NULL;
         }
-        Journalctl_get_next(self, Py_BuildValue("(L)", -1LL));
-        if (offset < 0LL)
-            Journalctl_get_next(self, Py_BuildValue("(L)", offset));
+        arg = Py_BuildValue("(L)", -1LL);
+        Py_DECREF(Journalctl_get_next(self, arg));
+        Py_DECREF(arg);
+        if (offset < 0LL) {
+            arg = Py_BuildValue("(L)", offset);
+            Py_DECREF(Journalctl_get_next(self, arg));
+            Py_DECREF(arg);
+        }
     }else{
         PyErr_SetString(PyExc_IOError, "Invalid value for whence");
         return NULL;
@@ -347,10 +389,12 @@ static PyObject *
 Journalctl_iternext(PyObject *self)
 {
     Journalctl *iter = (Journalctl *)self;
-    PyObject *dict;
+    PyObject *dict, *arg;
     Py_ssize_t dict_size;
 
-    dict = Journalctl_get_next(iter, Py_BuildValue("()"));
+    arg =  Py_BuildValue("()");
+    dict = Journalctl_get_next(iter, arg);
+    Py_DECREF(arg);
     dict_size = PyDict_Size(dict);
     if ((int64_t) dict_size > 0LL) {
         return dict;
@@ -369,9 +413,6 @@ Journalctl_query_unique(Journalctl *self, PyObject *args)
     if (! PyArg_ParseTuple(args, "s", &query))
         return NULL;
 
-    PyObject *list;
-    list = PyList_New(0);
-
     if (sd_journal_query_unique(self->j, query) != 0) {
         PyErr_SetString(PyExc_IOError, "Error querying journal");
         return NULL;
@@ -380,18 +421,22 @@ Journalctl_query_unique(Journalctl *self, PyObject *args)
     const void *uniq;
     size_t uniq_len;
     const char *delim_ptr;
+    PyObject *list, *value;
+    list = PyList_New(0);
 
     SD_JOURNAL_FOREACH_UNIQUE(self->j, uniq, uniq_len) {
         delim_ptr = memchr(uniq, '=', uniq_len);
 #if PY_MAJOR_VERSION >=3
-        PyList_Append(list, PyUnicode_FromStringAndSize(delim_ptr + 1, (const char*) uniq + uniq_len - (delim_ptr + 1)));
+        value = PyUnicode_FromStringAndSize(delim_ptr + 1, (const char*) uniq + uniq_len - (delim_ptr + 1));
 #else
-        PyList_Append(list, PyString_FromStringAndSize(delim_ptr + 1, (const char*) uniq + uniq_len - (delim_ptr + 1)));
-#endif //def SD_JOURNAL_FOREACH_UNIQUE
+        value = PyString_FromStringAndSize(delim_ptr + 1, (const char*) uniq + uniq_len - (delim_ptr + 1));
+#endif
+        PyList_Append(list, value);
+        Py_DECREF(value);
     }
     return list;
 }
-#endif
+#endif //def SD_JOURNAL_FOREACH_UNIQUE
 
 static PyMemberDef Journalctl_members[] = {
     {NULL}  /* Sentinel */
