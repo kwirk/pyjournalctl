@@ -6,8 +6,8 @@ A python module that reads systemd journald similar to journalctl
 
 Requirements
 ------------
-- python2 >= 2.6 or python3
-- systemd >= 194
+- python2 >= 2.7 or python3
+- systemd >= 187
 
 Installation
 ------------
