@@ -37,13 +37,14 @@ Journalctl_dealloc(Journalctl* self)
 static int
 Journalctl_init(Journalctl *self, PyObject *args)
 {
-    if (! PyArg_ParseTuple(args, ""))
+    int flags=SD_JOURNAL_LOCAL_ONLY;
+    if (! PyArg_ParseTuple(args, "|i", &flags))
         return 1;
 
     int r;
-    r = sd_journal_open(&self->j, SD_JOURNAL_LOCAL_ONLY);
+    r = sd_journal_open(&self->j, flags);
     if (r < 0) {
-        PyErr_SetString(PyExc_IOError, "Error sending data");
+        PyErr_SetString(PyExc_IOError, "Error opening journal");
         return 1;
     }
 
@@ -581,10 +582,16 @@ initpyjournalctl(void)
     PyModule_AddObject(m, "SD_JOURNAL_NOP", PyLong_FromLong(SD_JOURNAL_NOP));
     PyModule_AddObject(m, "SD_JOURNAL_APPEND", PyLong_FromLong(SD_JOURNAL_APPEND));
     PyModule_AddObject(m, "SD_JOURNAL_INVALIDATE", PyLong_FromLong(SD_JOURNAL_INVALIDATE));
+    PyModule_AddObject(m, "SD_JOURNAL_LOCAL_ONLY", PyLong_FromLong(SD_JOURNAL_LOCAL_ONLY));
+    PyModule_AddObject(m, "SD_JOURNAL_RUNTIME_ONLY", PyLong_FromLong(SD_JOURNAL_RUNTIME_ONLY));
+    PyModule_AddObject(m, "SD_JOURNAL_SYSTEM_ONLY", PyLong_FromLong(SD_JOURNAL_SYSTEM_ONLY));
     return m;
 #else
     PyModule_AddObject(m, "SD_JOURNAL_NOP", PyInt_FromLong(SD_JOURNAL_NOP));
     PyModule_AddObject(m, "SD_JOURNAL_APPEND", PyInt_FromLong(SD_JOURNAL_APPEND));
     PyModule_AddObject(m, "SD_JOURNAL_INVALIDATE", PyInt_FromLong(SD_JOURNAL_INVALIDATE));
+    PyModule_AddObject(m, "SD_JOURNAL_LOCAL_ONLY", PyInt_FromLong(SD_JOURNAL_LOCAL_ONLY));
+    PyModule_AddObject(m, "SD_JOURNAL_RUNTIME_ONLY", PyInt_FromLong(SD_JOURNAL_RUNTIME_ONLY));
+    PyModule_AddObject(m, "SD_JOURNAL_SYSTEM_ONLY", PyInt_FromLong(SD_JOURNAL_SYSTEM_ONLY));
 #endif
 }
