@@ -85,6 +85,11 @@ True
 >>> journal.seek(0,2) # Last entry
 >>> journal.get_previous()['_BOOT_ID'] == entry['_BOOT_ID']
 True
+>>> journal.flush_matches()
+>>> journal.seek(-1000,2) # Last 1000 entries
+>>> journal.this_machine() # Only log entries for this machine
+>>> len(set(entry['_MACHINE_ID'] for entry in journal))
+1
 
 TODO
 ----

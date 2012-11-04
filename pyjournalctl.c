@@ -486,6 +486,30 @@ Journalctl_this_boot(Journalctl *self, PyObject *args)
     Py_RETURN_NONE;
 }
 
+static PyObject *
+Journalctl_this_machine(Journalctl *self, PyObject *args)
+{
+    sd_id128_t sd_id;
+    if (sd_id128_get_machine(&sd_id) != 0) {
+        PyErr_SetString(PyExc_IOError, "Error getting current machine ID");
+        return NULL;
+    }
+
+    char machineid[33];
+    sd_id128_to_string(sd_id, machineid);
+
+    PyObject *arg;
+    arg = Py_BuildValue("(ss)", "_MACHINE_ID", machineid);
+    if (! Journalctl_add_match(self, arg)) {
+        Py_DECREF(arg);
+        PyErr_SetString(PyExc_IOError, "Error adding match for machine ID");
+        return NULL;
+    }
+    Py_DECREF(arg);
+
+    Py_RETURN_NONE;
+}
+
 static PyMemberDef Journalctl_members[] = {
     {NULL}  /* Sentinel */
 };
@@ -521,6 +545,8 @@ static PyMethodDef Journalctl_methods[] = {
     "Set maximum log level by adding match for PRIORITY"},
     {"this_boot", (PyCFunction)Journalctl_this_boot, METH_NOARGS,
     "Adds match filter for this boot with _BOOT_ID"},
+    {"this_machine", (PyCFunction)Journalctl_this_machine, METH_NOARGS,
+    "Adds match filter for this machine with _MACHINE_ID"},
     {NULL}  /* Sentinel */
 };
 
