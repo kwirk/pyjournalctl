@@ -462,6 +462,30 @@ Journalctl_log_level(Journalctl *self, PyObject *args)
     Py_RETURN_NONE;
 }
 
+static PyObject *
+Journalctl_this_boot(Journalctl *self, PyObject *args)
+{
+    sd_id128_t sd_id;
+    if (sd_id128_get_boot(&sd_id) != 0) {
+        PyErr_SetString(PyExc_IOError, "Error getting current boot ID");
+        return NULL;
+    }
+
+    char bootid[33];
+    sd_id128_to_string(sd_id, bootid);
+
+    PyObject *arg;
+    arg = Py_BuildValue("(ss)", "_BOOT_ID", bootid);
+    if (! Journalctl_add_match(self, arg)) {
+        Py_DECREF(arg);
+        PyErr_SetString(PyExc_IOError, "Error adding match for boot ID");
+        return NULL;
+    }
+    Py_DECREF(arg);
+
+    Py_RETURN_NONE;
+}
+
 static PyMemberDef Journalctl_members[] = {
     {NULL}  /* Sentinel */
 };
@@ -495,6 +519,8 @@ static PyMethodDef Journalctl_methods[] = {
 #endif
     {"log_level", (PyCFunction)Journalctl_log_level, METH_VARARGS,
     "Set maximum log level by adding match for PRIORITY"},
+    {"this_boot", (PyCFunction)Journalctl_this_boot, METH_NOARGS,
+    "Adds match filter for this boot with _BOOT_ID"},
     {NULL}  /* Sentinel */
 };
 

@@ -78,6 +78,13 @@ True
 'Unique systemd units in journal: ...'
 >>> len(systemd_units) == len(set(systemd_units))
 True
+>>> journal.flush_matches()
+>>> journal.this_boot() # Only log entries from this boot
+>>> journal.seek(0) # First entry
+>>> entry = journal.get_next()
+>>> journal.seek(0,2) # Last entry
+>>> journal.get_previous()['_BOOT_ID'] == entry['_BOOT_ID']
+True
 
 TODO
 ----
