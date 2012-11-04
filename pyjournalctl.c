@@ -630,20 +630,13 @@ initpyjournalctl(void)
 
     Py_INCREF(&JournalctlType);
     PyModule_AddObject(m, "Journalctl", (PyObject *)&JournalctlType);
+    PyModule_AddIntConstant(m, "SD_JOURNAL_NOP", SD_JOURNAL_NOP);
+    PyModule_AddIntConstant(m, "SD_JOURNAL_APPEND", SD_JOURNAL_APPEND);
+    PyModule_AddIntConstant(m, "SD_JOURNAL_INVALIDATE", SD_JOURNAL_INVALIDATE);
+    PyModule_AddIntConstant(m, "SD_JOURNAL_LOCAL_ONLY", SD_JOURNAL_LOCAL_ONLY);
+    PyModule_AddIntConstant(m, "SD_JOURNAL_RUNTIME_ONLY", SD_JOURNAL_RUNTIME_ONLY);
+    PyModule_AddIntConstant(m, "SD_JOURNAL_SYSTEM_ONLY", SD_JOURNAL_SYSTEM_ONLY);
 #if PY_MAJOR_VERSION >= 3
-    PyModule_AddObject(m, "SD_JOURNAL_NOP", PyLong_FromLong(SD_JOURNAL_NOP));
-    PyModule_AddObject(m, "SD_JOURNAL_APPEND", PyLong_FromLong(SD_JOURNAL_APPEND));
-    PyModule_AddObject(m, "SD_JOURNAL_INVALIDATE", PyLong_FromLong(SD_JOURNAL_INVALIDATE));
-    PyModule_AddObject(m, "SD_JOURNAL_LOCAL_ONLY", PyLong_FromLong(SD_JOURNAL_LOCAL_ONLY));
-    PyModule_AddObject(m, "SD_JOURNAL_RUNTIME_ONLY", PyLong_FromLong(SD_JOURNAL_RUNTIME_ONLY));
-    PyModule_AddObject(m, "SD_JOURNAL_SYSTEM_ONLY", PyLong_FromLong(SD_JOURNAL_SYSTEM_ONLY));
     return m;
-#else
-    PyModule_AddObject(m, "SD_JOURNAL_NOP", PyInt_FromLong(SD_JOURNAL_NOP));
-    PyModule_AddObject(m, "SD_JOURNAL_APPEND", PyInt_FromLong(SD_JOURNAL_APPEND));
-    PyModule_AddObject(m, "SD_JOURNAL_INVALIDATE", PyInt_FromLong(SD_JOURNAL_INVALIDATE));
-    PyModule_AddObject(m, "SD_JOURNAL_LOCAL_ONLY", PyInt_FromLong(SD_JOURNAL_LOCAL_ONLY));
-    PyModule_AddObject(m, "SD_JOURNAL_RUNTIME_ONLY", PyInt_FromLong(SD_JOURNAL_RUNTIME_ONLY));
-    PyModule_AddObject(m, "SD_JOURNAL_SYSTEM_ONLY", PyInt_FromLong(SD_JOURNAL_SYSTEM_ONLY));
 #endif
 }
