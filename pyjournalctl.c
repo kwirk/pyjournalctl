@@ -117,14 +117,11 @@ Journalctl_get_next(Journalctl *self, PyObject *args)
     uint64_t realtime;
     if (sd_journal_get_realtime_usec(self->j, &realtime) == 0) {
 #if PY_MAJOR_VERSION >=3
-        key = PyUnicode_FromString("__REALTIME_TIMESTAMP");
         value = PyUnicode_FromFormat("%llu", realtime);
 #else
-        key = PyString_FromString("__REALTIME_TIMESTAMP");
         value = PyString_FromFormat("%llu", realtime);
 #endif
-        PyDict_SetItem(dict, key, value);
-        Py_DECREF(key);
+        PyDict_SetItemString(dict, "__REALTIME_TIMESTAMP", value);
         Py_DECREF(value);
     }
 
@@ -142,14 +139,11 @@ Journalctl_get_next(Journalctl *self, PyObject *args)
         uint64_t monotonic;
         if (sd_journal_get_monotonic_usec(self->j, &monotonic, &sd_id) == 0) {
 #if PY_MAJOR_VERSION >=3
-            key = PyUnicode_FromString("__MONOTONIC_TIMESTAMP");
             value = PyUnicode_FromFormat("%llu", monotonic);
 #else
-            key = PyString_FromString("__MONOTONIC_TIMESTAMP");
             value = PyString_FromFormat("%llu", monotonic);
 #endif
-            PyDict_SetItem(dict, key, value);
-            Py_DECREF(key);
+            PyDict_SetItemString(dict, "__MONOTONIC_TIMESTAMP", value);
             Py_DECREF(value);
         }
     }
@@ -157,14 +151,11 @@ Journalctl_get_next(Journalctl *self, PyObject *args)
     char *cursor;
     if (sd_journal_get_cursor(self->j, &cursor) > 0) { //Should return 0...
 #if PY_MAJOR_VERSION >=3
-        key = PyUnicode_FromString("__CURSOR");
         value = PyUnicode_FromString(cursor);
 #else
-        key = PyString_FromString("__CURSOR");
         value = PyString_FromString(cursor);
 #endif
-        PyDict_SetItem(dict, key, value);
-        Py_DECREF(key);
+        PyDict_SetItemString(dict, "__CURSOR", value);
         Py_DECREF(value);
     }
 
