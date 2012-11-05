@@ -34,6 +34,15 @@ Journalctl_dealloc(Journalctl* self)
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
+PyDoc_STRVAR(Journalctl__doc__,
+"Journalctl([flags]) -> Journalctl instance\n\n"
+"Returns instance of Journalctl, which allows filtering and return\n"
+"of journal entries.\n"
+"Argument `flags` sets open flags of the journal, which can be one\n"
+"of, or ORed combination of: SD_JOURNAL_LOCAL_ONLY (default) opens\n"
+"journal on local machine only; SD_JOURNAL_RUNTIME_ONLY opens only\n"
+"volatile journal files; and SD_JOURNAL_SYSTEM_ONLY opens only\n"
+"journal files of system services and the kernel.");
 static int
 Journalctl_init(Journalctl *self, PyObject *args)
 {
@@ -51,6 +60,10 @@ Journalctl_init(Journalctl *self, PyObject *args)
     return 0;
 }
 
+PyDoc_STRVAR(Journalctl_get_next__doc__,
+"get_next([skip]) -> dict\n\n"
+"Return dictionary of the next log entry. Optional skip value will\n"
+"return the `skip`th log entry.");
 static PyObject *
 Journalctl_get_next(Journalctl *self, PyObject *args)
 {
@@ -158,6 +171,10 @@ Journalctl_get_next(Journalctl *self, PyObject *args)
     return dict;
 }
 
+PyDoc_STRVAR(Journalctl_get_previous__doc__,
+"get_previous([skip]) -> dict\n\n"
+"Return dictionary of the previous log entry. Optional skip value\n"
+"will return the -`skip`th log entry. Equivalent to get_next(-skip).");
 static PyObject *
 Journalctl_get_previous(Journalctl *self, PyObject *args)
 {
@@ -172,6 +189,13 @@ Journalctl_get_previous(Journalctl *self, PyObject *args)
     return dict;
 }
 
+PyDoc_STRVAR(Journalctl_add_match__doc__,
+"add_match(field[, value]) -> None\n\n"
+"Add a match to filter journal log entries. All matches of different\n"
+"field are combined in logical AND, and matches of the same field\n"
+"are automatically combined in logical OR.\n"
+"If `value` is not passed, `field` must include the value in the\n"
+"form of \"FIELD=VALUE\".");
 static PyObject *
 Journalctl_add_match(Journalctl *self, PyObject *args)
 {
@@ -198,6 +222,10 @@ Journalctl_add_match(Journalctl *self, PyObject *args)
     Py_RETURN_NONE;
 }
 
+PyDoc_STRVAR(Journalctl_add_matches__doc__,
+"add_matches(dictionary) -> None\n\n"
+"Add a matches to filter journal log entries. Argument must be dict\n"
+"type, where key represents the field.");
 static PyObject *
 Journalctl_add_matches(Journalctl *self, PyObject *args)
 {
@@ -235,6 +263,10 @@ Journalctl_add_matches(Journalctl *self, PyObject *args)
     Py_RETURN_NONE;
 }
 
+PyDoc_STRVAR(Journalctl_add_disjunction__doc__,
+"add_disjunction() -> None\n\n"
+"Once called, all matches before and after are combined in logical\n"
+"OR.");
 static PyObject *
 Journalctl_add_disjunction(Journalctl *self, PyObject *args)
 {
@@ -245,6 +277,9 @@ Journalctl_add_disjunction(Journalctl *self, PyObject *args)
     Py_RETURN_NONE;
 }
 
+PyDoc_STRVAR(Journalctl_flush_matches__doc__,
+"flush_matches() -> None\n\n"
+"Clears all current match filters.");
 static PyObject *
 Journalctl_flush_matches(Journalctl *self, PyObject *args)
 {
@@ -256,6 +291,12 @@ Journalctl_flush_matches(Journalctl *self, PyObject *args)
     Py_RETURN_NONE;
 }
 
+PyDoc_STRVAR(Journalctl_seek__doc__,
+"seek(offset[, whence]) -> None\n\n"
+"Seek through journal by `offset` number of entries. Argument\n"
+"`whence` defines what the offset is relative to: 0 (default) is\n"
+"from first match in journal; 1 from current position; and 2 is from\n"
+"last match in journal.");
 static PyObject *
 Journalctl_seek(Journalctl *self, PyObject *args, PyObject *keywds)
 {
@@ -302,6 +343,10 @@ Journalctl_seek(Journalctl *self, PyObject *args, PyObject *keywds)
     Py_RETURN_NONE;
 }
 
+PyDoc_STRVAR(Journalctl_seek_realtime__doc__,
+"seek_realtime(realtime) -> None\n\n"
+"Seek to nearest matching journal entry to `realtime`. Argument\n"
+"`realtime` is an integer unix timestamp in usecs.");
 static PyObject *
 Journalctl_seek_realtime(Journalctl *self, PyObject *args)
 {
@@ -320,6 +365,10 @@ Journalctl_seek_realtime(Journalctl *self, PyObject *args)
     Py_RETURN_NONE;
 }
 
+PyDoc_STRVAR(Journalctl_seek_monotonic__doc__,
+"seek_monotonic(monotonic) -> None\n\n"
+"Seek to nearest matching journal entry to `monotonic`. Argument\n"
+"`monotonic` is an integer timestamp from boot in usecs.");
 static PyObject *
 Journalctl_seek_monotonic(Journalctl *self, PyObject *args)
 {
@@ -344,7 +393,16 @@ Journalctl_seek_monotonic(Journalctl *self, PyObject *args)
     }
     Py_RETURN_NONE;
 }
-
+ 
+PyDoc_STRVAR(Journalctl_wait__doc__,
+"wait([timeout]) -> Change state (integer)\n\n"
+"Waits until there is a change in the journal. Argument `timeout`\n"
+"is the maximum number of seconds to wait before returning\n"
+"regardless if journal has changed. If `timeout` is not given or is\n"
+"0, then it will block forever.\n"
+"Will return: SD_JOURNAL_NOP if no change; SD_JOURNAL_APPEND if new\n"
+"entries have been added to the end of the journal; and\n"
+"SD_JOURNAL_INVALIDATE if journal files have been added or removed.");
 static PyObject *
 Journalctl_wait(Journalctl *self, PyObject *args, PyObject *keywds)
 {
@@ -365,6 +423,9 @@ Journalctl_wait(Journalctl *self, PyObject *args, PyObject *keywds)
 #endif
 }
 
+PyDoc_STRVAR(Journalctl_seek_cursor__doc__,
+"seek_cursor(cursor) -> None\n\n"
+"Seeks to journal entry by given unique reference `cursor`.");
 static PyObject *
 Journalctl_seek_cursor(Journalctl *self, PyObject *args)
 {
@@ -407,6 +468,10 @@ Journalctl_iternext(PyObject *self)
 }
 
 #ifdef SD_JOURNAL_FOREACH_UNIQUE
+PyDoc_STRVAR(Journalctl_query_unique__doc__,
+"query_unique(field) -> list of values\n\n"
+"Returns list of unique values in journal for given `field`.\n"
+"Note this currently does not respect any set matches.");
 static PyObject *
 Journalctl_query_unique(Journalctl *self, PyObject *args)
 {
@@ -439,6 +504,9 @@ Journalctl_query_unique(Journalctl *self, PyObject *args)
 }
 #endif //def SD_JOURNAL_FOREACH_UNIQUE
 
+PyDoc_STRVAR(Journalctl_log_level__doc__,
+"log_level(level) -> None\n\n"
+"Sets maximum log level by setting matches for PRIORITY.");
 static PyObject *
 Journalctl_log_level(Journalctl *self, PyObject *args)
 {
@@ -462,6 +530,9 @@ Journalctl_log_level(Journalctl *self, PyObject *args)
     Py_RETURN_NONE;
 }
 
+PyDoc_STRVAR(Journalctl_this_boot__doc__,
+"this_boot() -> None\n\n"
+"Sets match filter for the current _BOOT_ID.");
 static PyObject *
 Journalctl_this_boot(Journalctl *self, PyObject *args)
 {
@@ -486,6 +557,9 @@ Journalctl_this_boot(Journalctl *self, PyObject *args)
     Py_RETURN_NONE;
 }
 
+PyDoc_STRVAR(Journalctl_this_machine__doc__,
+"this_machine() -> None\n\n"
+"Sets match filter for the current _MACHINE_ID.");
 static PyObject *
 Journalctl_this_machine(Journalctl *self, PyObject *args)
 {
@@ -516,37 +590,37 @@ static PyMemberDef Journalctl_members[] = {
 
 static PyMethodDef Journalctl_methods[] = {
     {"get_next", (PyCFunction)Journalctl_get_next, METH_VARARGS,
-    "Get next message"},
+    Journalctl_get_next__doc__},
     {"get_previous", (PyCFunction)Journalctl_get_previous, METH_VARARGS,
-    "Get previous message"},
+    Journalctl_get_previous__doc__},
     {"add_match", (PyCFunction)Journalctl_add_match, METH_VARARGS,
-    "Add an 'and' match filter"},
+    Journalctl_add_match__doc__},
     {"add_matches", (PyCFunction)Journalctl_add_matches, METH_VARARGS,
-    "Adds multiple 'and' match filters"},
+    Journalctl_add_matches__doc__},
     {"add_disjunction", (PyCFunction)Journalctl_add_disjunction, METH_NOARGS,
-    "Add an 'or' match filter"},
+    Journalctl_add_disjunction__doc__},
     {"flush_matches", (PyCFunction)Journalctl_flush_matches, METH_NOARGS,
-    "Clear match filter"},
+    Journalctl_flush_matches__doc__},
     {"seek", (PyCFunction)Journalctl_seek, METH_VARARGS | METH_KEYWORDS,
-    "Seek through journal"},
+    Journalctl_seek__doc__},
     {"seek_realtime", (PyCFunction)Journalctl_seek_realtime, METH_VARARGS,
-    "Seek to nearest log entry to given time in usecs"},
+    Journalctl_seek_realtime__doc__},
     {"seek_monotonic", (PyCFunction)Journalctl_seek_monotonic, METH_VARARGS,
-    "Seek to nearest log entry to given monotonic time in usecs and given bootid"},
+    Journalctl_seek_monotonic__doc__},
     {"wait", (PyCFunction)Journalctl_wait, METH_VARARGS,
-    "Block for number of seconds or until new log entry. 0 seconds waits indefinitely"},
+    Journalctl_wait__doc__},
     {"seek_cursor", (PyCFunction)Journalctl_seek_cursor, METH_VARARGS,
-    "Seek to log entry for given unique reference cursor"},
+    Journalctl_seek_cursor__doc__},
 #ifdef SD_JOURNAL_FOREACH_UNIQUE
     {"query_unique", (PyCFunction)Journalctl_query_unique, METH_VARARGS,
-    "Get unique values for given field name"},
+    Journalctl_query_unique__doc__},
 #endif
     {"log_level", (PyCFunction)Journalctl_log_level, METH_VARARGS,
-    "Set maximum log level by adding match for PRIORITY"},
+    Journalctl_log_level__doc__},
     {"this_boot", (PyCFunction)Journalctl_this_boot, METH_NOARGS,
-    "Adds match filter for this boot with _BOOT_ID"},
+    Journalctl_this_boot__doc__},
     {"this_machine", (PyCFunction)Journalctl_this_machine, METH_NOARGS,
-    "Adds match filter for this machine with _MACHINE_ID"},
+    Journalctl_this_machine__doc__},
     {NULL}  /* Sentinel */
 };
 
@@ -571,7 +645,7 @@ static PyTypeObject JournalctlType = {
     0,                                /*tp_setattro*/
     0,                                /*tp_as_buffer*/
     Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,/*tp_flags*/
-    "pyjournalctl Journalctl objects",/* tp_doc */
+    Journalctl__doc__,                /* tp_doc */
     0,                                /* tp_traverse */
     0,                                /* tp_clear */
     0,                                /* tp_richcompare */
