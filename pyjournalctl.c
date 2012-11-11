@@ -621,19 +621,22 @@ Journalctl_query_unique(Journalctl *self, PyObject *args)
     const void *uniq;
     size_t uniq_len;
     const char *delim_ptr;
-    PyObject *list, *value;
+    PyObject *list, *key, *value;
     list = PyList_New(0);
+
+#if PY_MAJOR_VERSION >=3
+    key = PyUnicode_FromString(query);
+#else
+    key = PyString_FromString(query);
+#endif
 
     SD_JOURNAL_FOREACH_UNIQUE(self->j, uniq, uniq_len) {
         delim_ptr = memchr(uniq, '=', uniq_len);
-#if PY_MAJOR_VERSION >=3
-        value = PyUnicode_FromStringAndSize(delim_ptr + 1, (const char*) uniq + uniq_len - (delim_ptr + 1));
-#else
-        value = PyString_FromStringAndSize(delim_ptr + 1, (const char*) uniq + uniq_len - (delim_ptr + 1));
-#endif
+        value = Journalctl___process_field(self, key, delim_ptr + 1, (const char*) uniq + uniq_len - (delim_ptr + 1));
         PyList_Append(list, value);
         Py_DECREF(value);
     }
+    Py_DECREF(key);
     return list;
 }
 #endif //def SD_JOURNAL_FOREACH_UNIQUE
