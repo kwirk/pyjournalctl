@@ -23,12 +23,12 @@ Usage Examples
 >>> journal = pyjournalctl.Journalctl()
 >>> journal.add_matches({"PRIORITY": "5", "_PID": "1"})
 >>> entry = journal.get_next()
->>> "PRIORITY: %(PRIORITY)s" % entry
-'PRIORITY: 5'
->>> "_PID: %(_PID)s" % entry
-'_PID: 1'
->>> "MESSAGE: %(MESSAGE)s" % entry # doctest: +ELLIPSIS
-'MESSAGE: ...'
+>>> print("PRIORITY: %(PRIORITY)i" % entry)
+PRIORITY: 5
+>>> print("_PID: %(_PID)i" % entry)
+_PID: 1
+>>> print("MESSAGE: %(MESSAGE)s" % entry) # doctest: +ELLIPSIS
+MESSAGE: ...
 >>>
 >>> journal.flush_matches()
 >>> journal.seek(100) # 100 entries from start
@@ -38,12 +38,10 @@ Usage Examples
 >>> journal.add_match("_UID", "0")
 >>> entry = journal.get_next(2) # Get second match
 >>> entry.get("_TRANSPORT") == "kernel" or (
-...     entry.get('PRIORITY') == "5" and entry.get("_UID") == "0")
+...     entry.get('PRIORITY') == 5 and entry.get("_UID") == 0)
 True
 >>>
 >>> cursor = entry['__CURSOR'] # Cursor is unique reference
->>> cursor # doctest: +ELLIPSIS
-'...'
 >>> journal.flush_matches()
 >>> journal.seek(0,2) # End of journal
 >>> entry2 = journal.get_previous()
@@ -54,17 +52,17 @@ False
 >>> journal.seek_cursor(cursor) # Seek to unique reference
 >>> journal.get_next() == entry
 True
->>> realtime = int(entry['__REALTIME_TIMESTAMP'])
+>>> realtime = entry['__REALTIME_TIMESTAMP']
 >>> journal.get_next(10) == entry
 False
 >>> journal.seek_realtime(realtime)
 >>> journal.get_next() == entry
 True
->>> monotonic = int(entry['__MONOTONIC_TIMESTAMP'])
+>>> monotonic = entry['__MONOTONIC_TIMESTAMP']
 >>> bootid = entry['_BOOT_ID']
 >>> journal.get_next(5) == entry
 False
->>> journal.seek_monotonic(monotonic, bootid)
+>>> journal.seek_monotonic(monotonic.total_seconds()*1E6, bootid)
 >>> journal.get_next() == entry
 True
 >>> journal.flush_matches()
@@ -74,8 +72,8 @@ True
 >>> priorities >= set(int(entry['PRIORITY']) for entry in journal)
 True
 >>> systemd_units = journal.query_unique("_SYSTEMD_UNIT")
->>> "Unique systemd units in journal: %s" % ', '.join(systemd_units) # doctest: +ELLIPSIS
-'Unique systemd units in journal: ...'
+>>> print("Unique systemd units in journal: %s" % ', '.join(systemd_units)) # doctest: +ELLIPSIS
+Unique systemd units in journal: ...
 >>> len(systemd_units) == len(set(systemd_units))
 True
 >>> journal.flush_matches()

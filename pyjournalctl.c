@@ -25,6 +25,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 typedef struct {
     PyObject_HEAD
     sd_journal *j;
+    PyObject *default_call;
+    PyObject *call_dict;
 } Journalctl;
 static PyTypeObject JournalctlType;
 
@@ -32,7 +34,54 @@ static void
 Journalctl_dealloc(Journalctl* self)
 {
     sd_journal_close(self->j);
+    Py_XDECREF(self->default_call);
+    Py_XDECREF(self->call_dict);
     Py_TYPE(self)->tp_free((PyObject*)self);
+}
+
+static PyObject *
+Journalctl_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
+{
+    Journalctl *self;
+
+    self = (Journalctl *)type->tp_alloc(type, 0);
+    if (self != NULL) {
+        PyObject *globals, *temp;
+
+        globals = PyEval_GetBuiltins();
+        temp = PyImport_ImportModule("functools");
+        PyDict_SetItemString(globals, "functools", temp);
+        Py_DECREF(temp);
+        temp = PyImport_ImportModule("datetime");
+        PyDict_SetItemString(globals, "datetime", temp);
+        Py_DECREF(temp);
+
+#if PY_MAJOR_VERSION >=3
+        self->default_call = PyRun_String("functools.partial(str, encoding='utf-8')", Py_eval_input, globals, NULL);
+#else
+        self->default_call = PyRun_String("functools.partial(unicode, encoding='utf-8')", Py_eval_input, globals, NULL);
+#endif
+
+        self->call_dict = PyRun_String("{"
+            "'PRIORITY': int,"
+            "'_UID': int,"
+            "'_GID': int,"
+            "'_PID': int,"
+            "'SYSLOG_FACILITY': int,"
+            "'SYSLOG_PID': int,"
+            "'_AUDIT_SESSION': int,"
+            "'_AUDIT_LOGINUID': int,"
+            "'_SYSTEMD_SESSION': int,"
+            "'_SYSTEMD_OWNER_UID': int,"
+            "'CODE_LINE': int,"
+            "'ERRNO': int,"
+            "'_SOURCE_REALTIME_TIMESTAMP': lambda x: datetime.datetime.fromtimestamp(float(x)/1E6),"
+            "'__REALTIME_TIMESTAMP': lambda x: datetime.datetime.fromtimestamp(float(x)/1E6),"
+            "'__MONOTONIC_TIMESTAMP': lambda x: datetime.timedelta(microseconds=float(x)),"
+            "}", Py_eval_input, globals, NULL);
+    }
+
+    return (PyObject *) self;
 }
 
 PyDoc_STRVAR(Journalctl__doc__,
@@ -45,11 +94,40 @@ PyDoc_STRVAR(Journalctl__doc__,
 "volatile journal files; and SD_JOURNAL_SYSTEM_ONLY opens only\n"
 "journal files of system services and the kernel.");
 static int
-Journalctl_init(Journalctl *self, PyObject *args)
+Journalctl_init(Journalctl *self, PyObject *args, PyObject *keywds)
 {
     int flags=SD_JOURNAL_LOCAL_ONLY;
-    if (! PyArg_ParseTuple(args, "|i", &flags))
+    PyObject *default_call=NULL, *call_dict=NULL;
+
+    static char *kwlist[] = {"flags", "default_call", "call_dict", NULL};
+    if (! PyArg_ParseTupleAndKeywords(args, keywds, "|iOO", kwlist,
+                                      &flags, &default_call, &call_dict))
         return 1;
+
+    if (default_call) {
+        if (PyCallable_Check(default_call) || default_call == Py_None) {
+            Py_DECREF(self->default_call);
+            self->default_call = default_call;
+            Py_INCREF(self->default_call);
+        }else{
+            PyErr_SetString(PyExc_TypeError, "Default call not callable");
+            return 1;
+        }
+    }
+
+    if (call_dict) {
+        if (PyDict_Check(call_dict)) {
+            Py_DECREF(self->call_dict);
+            self->call_dict = call_dict;
+            Py_INCREF(self->call_dict);
+        }else if (call_dict == Py_None) {
+            Py_DECREF(self->call_dict);
+            self->call_dict = PyDict_New();
+        }else{
+            PyErr_SetString(PyExc_TypeError, "Call dictionary must be dict type");
+            return 1;
+        }
+    }
 
     int r;
     r = sd_journal_open(&self->j, flags);
@@ -59,6 +137,42 @@ Journalctl_init(Journalctl *self, PyObject *args)
     }
 
     return 0;
+}
+
+static PyObject *
+Journalctl___process_field(Journalctl *self, PyObject *key, const void *value, ssize_t value_len)
+{
+    PyObject *callable=NULL, *return_value=NULL;
+    if (PyDict_Check(self->call_dict))
+        callable = PyDict_GetItem(self->call_dict, key);
+
+    if (callable) {
+#if PY_MAJOR_VERSION >=3
+        return_value = PyObject_CallFunction(callable, "y#", value, value_len);
+#else
+        return_value = PyObject_CallFunction(callable, "s#", value, value_len);
+#endif
+        if (!return_value)
+            PyErr_Clear();
+    }
+    if (!return_value)
+#if PY_MAJOR_VERSION >=3
+        return_value = PyObject_CallFunction(self->default_call, "y#", value, value_len);
+#else
+        return_value = PyObject_CallFunction(self->default_call, "s#", value, value_len);
+#endif
+    if (!return_value) {
+        PyErr_Clear();
+#if PY_MAJOR_VERSION >=3
+        return_value = PyBytes_FromStringAndSize(value, value_len);
+#else
+        return_value = PyString_FromStringAndSize(value, value_len);
+#endif
+    }
+    if (!return_value) {
+        return_value = Py_None;
+    }
+    return return_value;
 }
 
 PyDoc_STRVAR(Journalctl_get_next__doc__,
@@ -105,11 +219,10 @@ Journalctl_get_next(Journalctl *self, PyObject *args)
         delim_ptr = memchr(msg, '=', msg_len);
 #if PY_MAJOR_VERSION >=3
         key = PyUnicode_FromStringAndSize(msg, delim_ptr - (const char*) msg);
-        value = PyUnicode_FromStringAndSize(delim_ptr + 1, (const char*) msg + msg_len - (delim_ptr + 1));
 #else
         key = PyString_FromStringAndSize(msg, delim_ptr - (const char*) msg);
-        value = PyString_FromStringAndSize(delim_ptr + 1, (const char*) msg + msg_len - (delim_ptr + 1));
 #endif
+        value = Journalctl___process_field(self, key, delim_ptr + 1, (const char*) msg + msg_len - (delim_ptr + 1) );
         PyDict_SetItem(dict, key, value);
         Py_DECREF(key);
         Py_DECREF(value);
@@ -117,12 +230,17 @@ Journalctl_get_next(Journalctl *self, PyObject *args)
 
     uint64_t realtime;
     if (sd_journal_get_realtime_usec(self->j, &realtime) == 0) {
+        char realtime_str[20];
+        sprintf(realtime_str, "%llu", (long long unsigned) realtime);
+
 #if PY_MAJOR_VERSION >=3
-        value = PyUnicode_FromFormat("%llu", realtime);
+        key = PyUnicode_FromString("__REALTIME_TIMESTAMP");
 #else
-        value = PyString_FromFormat("%llu", realtime);
+        key = PyString_FromString("__REALTIME_TIMESTAMP");
 #endif
-        PyDict_SetItemString(dict, "__REALTIME_TIMESTAMP", value);
+        value = Journalctl___process_field(self, key, realtime_str, strlen(realtime_str));
+        PyDict_SetItem(dict, key, value);
+        Py_DECREF(key);
         Py_DECREF(value);
     }
 
@@ -139,12 +257,17 @@ Journalctl_get_next(Journalctl *self, PyObject *args)
     if (sd_id128_from_string(bootid, &sd_id) == 0) {
         uint64_t monotonic;
         if (sd_journal_get_monotonic_usec(self->j, &monotonic, &sd_id) == 0) {
+            char monotonic_str[20];
+            sprintf(monotonic_str, "%llu", (long long unsigned) monotonic);
 #if PY_MAJOR_VERSION >=3
-            value = PyUnicode_FromFormat("%llu", monotonic);
+            key = PyUnicode_FromString("__MONOTONIC_TIMESTAMP");
 #else
-            value = PyString_FromFormat("%llu", monotonic);
+            key = PyString_FromString("__MONOTONIC_TIMESTAMP");
 #endif
-            PyDict_SetItemString(dict, "__MONOTONIC_TIMESTAMP", value);
+            value = Journalctl___process_field(self, key, monotonic_str, strlen(monotonic_str));
+
+            PyDict_SetItem(dict, key, value);
+            Py_DECREF(key);
             Py_DECREF(value);
         }
     }
@@ -152,11 +275,13 @@ Journalctl_get_next(Journalctl *self, PyObject *args)
     char *cursor;
     if (sd_journal_get_cursor(self->j, &cursor) > 0) { //Should return 0...
 #if PY_MAJOR_VERSION >=3
-        value = PyUnicode_FromString(cursor);
+        key = PyUnicode_FromString("__CURSOR");
 #else
-        value = PyString_FromString(cursor);
+        key = PyString_FromString("__CURSOR");
 #endif
-        PyDict_SetItemString(dict, "__CURSOR", value);
+        value = Journalctl___process_field(self, key, cursor, strlen(cursor));
+        PyDict_SetItem(dict, key, value);
+        Py_DECREF(key);
         Py_DECREF(value);
     }
 
@@ -600,6 +725,10 @@ Journalctl_this_machine(Journalctl *self, PyObject *args)
 }
 
 static PyMemberDef Journalctl_members[] = {
+    {"default_call", T_OBJECT_EX, offsetof(Journalctl, default_call), 0,
+    "default call for values for fields"},
+    {"call_dict", T_OBJECT_EX, offsetof(Journalctl, call_dict), 0,
+    "dictionary of calls for each field"},
     {NULL}  /* Sentinel */
 };
 
@@ -677,7 +806,7 @@ static PyTypeObject JournalctlType = {
     0,                                /* tp_dictoffset */
     (initproc)Journalctl_init,        /* tp_init */
     0,                                /* tp_alloc */
-    PyType_GenericNew,                /* tp_new */
+    Journalctl_new,                   /* tp_new */
 };
 
 #if PY_MAJOR_VERSION >= 3
