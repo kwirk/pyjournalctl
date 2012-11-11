@@ -213,6 +213,7 @@ Journalctl_get_next(Journalctl *self, PyObject *args)
     const void *msg;
     size_t msg_len;
     const char *delim_ptr;
+    char bootid[33];
     PyObject *key, *value;
 
     SD_JOURNAL_FOREACH_DATA(self->j, msg, msg_len) {
@@ -222,6 +223,8 @@ Journalctl_get_next(Journalctl *self, PyObject *args)
 #else
         key = PyString_FromStringAndSize(msg, delim_ptr - (const char*) msg);
 #endif
+        if (strncmp(msg, "_BOOT_ID", 8) == 0)
+            strncpy(bootid, (char *) delim_ptr + 1, 33);
         value = Journalctl___process_field(self, key, delim_ptr + 1, (const char*) msg + msg_len - (delim_ptr + 1) );
         PyDict_SetItem(dict, key, value);
         Py_DECREF(key);
@@ -244,16 +247,7 @@ Journalctl_get_next(Journalctl *self, PyObject *args)
         Py_DECREF(value);
     }
 
-    char *bootid;
     sd_id128_t sd_id;
-#if PY_MAJOR_VERSION >=3
-    PyObject *temp;
-    temp = PyUnicode_AsASCIIString(PyDict_GetItemString(dict, "_BOOT_ID"));
-    bootid = PyBytes_AsString(temp);
-    Py_DECREF(temp);
-#else
-    bootid = PyString_AsString(PyDict_GetItemString(dict, "_BOOT_ID"));
-#endif
     if (sd_id128_from_string(bootid, &sd_id) == 0) {
         uint64_t monotonic;
         if (sd_journal_get_monotonic_usec(self->j, &monotonic, &sd_id) == 0) {
