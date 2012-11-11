@@ -20,6 +20,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include <Python.h>
 #include <structmember.h>
+#include <datetime.h>
 
 typedef struct {
     PyObject_HEAD
@@ -340,19 +341,39 @@ Journalctl_seek(Journalctl *self, PyObject *args, PyObject *keywds)
 PyDoc_STRVAR(Journalctl_seek_realtime__doc__,
 "seek_realtime(realtime) -> None\n\n"
 "Seek to nearest matching journal entry to `realtime`. Argument\n"
-"`realtime` is an integer unix timestamp in usecs.");
+"`realtime` can be an integer unix timestamp in usecs or a "
+"datetime instance.");
 static PyObject *
 Journalctl_seek_realtime(Journalctl *self, PyObject *args)
 {
-    int64_t time;
-    if (! PyArg_ParseTuple(args, "L", &time))
+    PyObject *arg;
+    if (! PyArg_ParseTuple(args, "O", &arg))
         return NULL;
-    if (time < 0LL) {
-        PyErr_SetString(PyExc_ValueError, "Time must be positive integer");
+
+    uint64_t timestamp;
+    if (PyDateTime_Check(arg)) {
+        PyObject *temp;
+        char *timestamp_str;
+        temp = PyObject_CallMethod(arg, "strftime", "s", "%s%f");
+#if PY_MAJOR_VERSION >=3
+        PyObject *temp2;
+        temp2 = PyUnicode_AsUTF8String(temp);
+        timestamp_str = PyBytes_AsString(temp2);
+        Py_DECREF(temp2);
+#else
+        timestamp_str = PyString_AsString(temp);
+#endif
+        Py_DECREF(temp);
+        timestamp = strtoull(timestamp_str, NULL, 10);
+    }else if (PyNumber_Check(arg)) {
+        PyArg_ParseTuple(args, "K", &timestamp);
+    }
+    if ((int64_t) timestamp < 0LL) {
+        PyErr_SetString(PyExc_ValueError, "Time must be positive integer or datetime instance");
         return NULL;
     }
 
-    if (sd_journal_seek_realtime_usec(self->j, time) != 0) {
+    if (sd_journal_seek_realtime_usec(self->j, timestamp) != 0) {
         PyErr_SetString(PyExc_IOError, "Error seek to time");
         return NULL;
     }
@@ -677,6 +698,8 @@ initpyjournalctl(void)
 #endif
 {
     PyObject* m;
+
+    PyDateTime_IMPORT;
 
     if (PyType_Ready(&JournalctlType) < 0)
 #if PY_MAJOR_VERSION >= 3
