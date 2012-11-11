@@ -85,14 +85,21 @@ Journalctl_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 }
 
 PyDoc_STRVAR(Journalctl__doc__,
-"Journalctl([flags]) -> Journalctl instance\n\n"
+"Journalctl([flags][, default_call][, call_dict]) -> Journalctl instance\n\n"
 "Returns instance of Journalctl, which allows filtering and return\n"
 "of journal entries.\n"
 "Argument `flags` sets open flags of the journal, which can be one\n"
 "of, or ORed combination of: SD_JOURNAL_LOCAL_ONLY (default) opens\n"
 "journal on local machine only; SD_JOURNAL_RUNTIME_ONLY opens only\n"
 "volatile journal files; and SD_JOURNAL_SYSTEM_ONLY opens only\n"
-"journal files of system services and the kernel.");
+"journal files of system services and the kernel.\n"
+"Argument `default_call` must be a callable that accepts one\n"
+"argument which is string/bytes value of a field and returns\n"
+"python object.\n"
+"Argument `call_dict` is a dictionary where the key represents\n"
+"a field name, and value is a callable as per `default_call`.\n"
+"A set of sane defaults for `default_call` and `call_dict` are\n"
+"present.");
 static int
 Journalctl_init(Journalctl *self, PyObject *args, PyObject *keywds)
 {
