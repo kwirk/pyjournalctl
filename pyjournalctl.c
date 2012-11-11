@@ -195,11 +195,14 @@ Journalctl_add_match(Journalctl *self, PyObject *args)
     if (! PyArg_ParseTuple(args, "s#|s#", &match_key, &match_key_len, &match_value, &match_value_len))
         return NULL;
 
-    char *match;
+    void *match;
     int match_len;
     if (match_value) {
-        match = malloc(match_key_len + match_value_len + 2);
-        match_len = sprintf(match, "%s=%s", match_key, match_value);
+        match_len = match_key_len + 1 + match_value_len;
+        match = malloc(match_len);
+        memcpy(match, match_key, match_key_len);
+        memcpy(match + match_key_len, "=", 1);
+        memcpy(match + match_key_len + 1, match_value, match_value_len);
     }else{
         match = match_key;
         match_len = match_key_len;
@@ -234,9 +237,9 @@ Journalctl_add_matches(Journalctl *self, PyObject *args)
     PyObject *key, *value;
     while (PyDict_Next(dict, &pos, &key, &value)) {
 #if PY_MAJOR_VERSION >=3
-        if (!(PyUnicode_Check(key) && PyUnicode_Check(value))) {
+        if (!((PyUnicode_Check(key) || PyBytes_Check(key)) && (PyUnicode_Check(value) || PyBytes_Check(value)))) {
 #else
-        if (!(PyString_Check(key) && PyString_Check(value))) {
+        if (!((PyUnicode_Check(key) || PyString_Check(key)) && (PyUnicode_Check(value) || PyString_Check(value)))) {
 #endif
             PyErr_SetString(PyExc_ValueError, "Dictionary keys and values must be strings");
             return NULL;
