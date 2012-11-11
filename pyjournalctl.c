@@ -511,9 +511,12 @@ Journalctl_seek_realtime(Journalctl *self, PyObject *args)
 }
 
 PyDoc_STRVAR(Journalctl_seek_monotonic__doc__,
-"seek_monotonic(monotonic) -> None\n\n"
+"seek_monotonic(monotonic, bootid) -> None\n\n"
 "Seek to nearest matching journal entry to `monotonic`. Argument\n"
-"`monotonic` is an integer timestamp from boot in usecs.");
+"`monotonic` is an integer timestamp from boot in usecs, or a\n"
+"timedelta instance.\n"
+"Argument `bootid` is a string representing which boot the\n"
+"monotonic time is reference to.");
 static PyObject *
 Journalctl_seek_monotonic(Journalctl *self, PyObject *args)
 {
