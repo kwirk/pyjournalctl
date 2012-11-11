@@ -517,18 +517,33 @@ PyDoc_STRVAR(Journalctl_seek_monotonic__doc__,
 static PyObject *
 Journalctl_seek_monotonic(Journalctl *self, PyObject *args)
 {
-    int64_t time;
+    PyObject *arg;
     char *bootid;
-    if (! PyArg_ParseTuple(args, "Ls", &time, &bootid))
+    if (! PyArg_ParseTuple(args, "Os", &arg, &bootid))
         return NULL;
-    if (time < 0LL) {
-        PyErr_SetString(PyExc_ValueError, "Time must be positive integer");
+
+    uint64_t timestamp=-1LL;
+    if PyDelta_Check(arg) {
+        PyObject *temp;
+        temp = PyObject_CallMethod(arg, "total_seconds", NULL);
+        timestamp = (uint64_t) (PyFloat_AsDouble(temp) * 1E6);
+        Py_DECREF(temp);
+    }else if (PyLong_Check(arg)) {
+        timestamp = PyLong_AsUnsignedLongLong(arg);
+#if PY_MAJOR_VERSION <3
+    }else if (PyInt_Check(arg)) {
+        timestamp = PyInt_AsUnsignedLongLongMask(arg);
+#endif
+    }
+
+    if ((int64_t) timestamp < 0LL) {
+        PyErr_SetString(PyExc_ValueError, "Time must be positive integer or timedelta instance");
         return NULL;
     }
 
     sd_id128_t sd_id;
     if (sd_id128_from_string(bootid, &sd_id) == 0) {
-        if (sd_journal_seek_monotonic_usec(self->j, sd_id, time) != 0) {
+        if (sd_journal_seek_monotonic_usec(self->j, sd_id, timestamp) != 0) {
             PyErr_SetString(PyExc_IOError, "Error seek to time");
             return NULL;
         }

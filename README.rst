@@ -62,7 +62,7 @@ True
 >>> bootid = entry['_BOOT_ID']
 >>> journal.get_next(5) == entry
 False
->>> journal.seek_monotonic(monotonic.total_seconds()*1E6, bootid)
+>>> journal.seek_monotonic(int(monotonic.total_seconds()*1E6), bootid)
 >>> journal.get_next() == entry
 True
 >>> journal.flush_matches()
