@@ -476,7 +476,7 @@ Journalctl_seek_realtime(Journalctl *self, PyObject *args)
     if (! PyArg_ParseTuple(args, "O", &arg))
         return NULL;
 
-    uint64_t timestamp;
+    uint64_t timestamp=-1LL;
     if (PyDateTime_Check(arg)) {
         PyObject *temp;
         char *timestamp_str;
@@ -491,8 +491,12 @@ Journalctl_seek_realtime(Journalctl *self, PyObject *args)
 #endif
         Py_DECREF(temp);
         timestamp = strtoull(timestamp_str, NULL, 10);
-    }else if (PyNumber_Check(arg)) {
-        PyArg_ParseTuple(args, "K", &timestamp);
+    }else if (PyLong_Check(arg)) {
+        timestamp = PyLong_AsUnsignedLongLong(arg);
+#if PY_MAJOR_VERSION <3
+    }else if (PyInt_Check(arg)) {
+        timestamp = PyInt_AsUnsignedLongLongMask(arg);
+#endif
     }
     if ((int64_t) timestamp < 0LL) {
         PyErr_SetString(PyExc_ValueError, "Time must be positive integer or datetime instance");
