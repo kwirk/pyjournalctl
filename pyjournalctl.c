@@ -511,18 +511,18 @@ Journalctl_seek_realtime(Journalctl *self, PyObject *args)
 }
 
 PyDoc_STRVAR(Journalctl_seek_monotonic__doc__,
-"seek_monotonic(monotonic, bootid) -> None\n\n"
+"seek_monotonic(monotonic[, bootid]) -> None\n\n"
 "Seek to nearest matching journal entry to `monotonic`. Argument\n"
 "`monotonic` is an integer timestamp from boot in usecs, or a\n"
 "timedelta instance.\n"
 "Argument `bootid` is a string representing which boot the\n"
-"monotonic time is reference to.");
+"monotonic time is reference to. Defaults to current bootid.");
 static PyObject *
 Journalctl_seek_monotonic(Journalctl *self, PyObject *args)
 {
     PyObject *arg;
-    char *bootid;
-    if (! PyArg_ParseTuple(args, "Os", &arg, &bootid))
+    char *bootid=NULL;
+    if (! PyArg_ParseTuple(args, "O|s", &arg, &bootid))
         return NULL;
 
     uint64_t timestamp=-1LL;
@@ -545,13 +545,20 @@ Journalctl_seek_monotonic(Journalctl *self, PyObject *args)
     }
 
     sd_id128_t sd_id;
-    if (sd_id128_from_string(bootid, &sd_id) == 0) {
-        if (sd_journal_seek_monotonic_usec(self->j, sd_id, timestamp) != 0) {
-            PyErr_SetString(PyExc_IOError, "Error seek to time");
+    if (bootid) {
+        if (sd_id128_from_string(bootid, &sd_id) != 0) {
+            PyErr_SetString(PyExc_ValueError, "Invalid bootid");
             return NULL;
         }
     }else{
-        PyErr_SetString(PyExc_ValueError, "Invalid bootid");
+        if (sd_id128_get_boot(&sd_id) != 0) {
+            PyErr_SetString(PyExc_IOError, "Error getting current boot ID");
+            return NULL;
+        }
+    }
+
+    if (sd_journal_seek_monotonic_usec(self->j, sd_id, timestamp) != 0) {
+        PyErr_SetString(PyExc_IOError, "Error seek to time");
         return NULL;
     }
     Py_RETURN_NONE;

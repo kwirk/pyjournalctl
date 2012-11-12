@@ -89,6 +89,10 @@ True
 >>> len(set(entry['_MACHINE_ID'] for entry in journal))
 1
 
+Known Issues
+------------
+* `seek_monotonic` seems to ignore `bootid` parameter. Can use seek monotonic by setting "_BOOT_ID" filter. Currently suspect this is issue with systemd c API `sd_journal_seek_monotonic_usec`...
+
 TODO
 ----
 * Still seem to be some memory leaks...
