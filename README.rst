@@ -21,7 +21,7 @@ Usage Examples
 --------------
 >>> import pyjournalctl
 >>> journal = pyjournalctl.Journalctl()
->>> journal.add_matches({"PRIORITY": "5", "_PID": "1"})
+>>> journal.add_matches({"'PRIORITY'": "5", "'_PID'": "1"})
 >>> entry = journal.get_next()
 >>> print("PRIORITY: %(PRIORITY)i" % entry)
 PRIORITY: 5
