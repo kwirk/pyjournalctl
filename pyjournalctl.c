@@ -137,7 +137,9 @@ Journalctl_init(Journalctl *self, PyObject *args, PyObject *keywds)
     }
 
     int r;
+    Py_BEGIN_ALLOW_THREADS
     r = sd_journal_open(&self->j, flags);
+    Py_END_ALLOW_THREADS
     if (r < 0) {
         PyErr_SetString(PyExc_IOError, "Error opening journal");
         return 1;
@@ -195,13 +197,21 @@ Journalctl_get_next(Journalctl *self, PyObject *args)
 
     int r;
     if (skip == 1LL) {
+        Py_BEGIN_ALLOW_THREADS
         r = sd_journal_next(self->j);
+        Py_END_ALLOW_THREADS
     }else if (skip == -1LL) {
+        Py_BEGIN_ALLOW_THREADS
         r = sd_journal_previous(self->j);
+        Py_END_ALLOW_THREADS
     }else if (skip > 1LL) {
+        Py_BEGIN_ALLOW_THREADS
         r = sd_journal_next_skip(self->j, skip);
+        Py_END_ALLOW_THREADS
     }else if (skip < -1LL) {
+        Py_BEGIN_ALLOW_THREADS
         r = sd_journal_previous_skip(self->j, -skip);
+        Py_END_ALLOW_THREADS
     }else{
         PyErr_SetString(PyExc_ValueError, "Skip number must positive/negative integer");
         return NULL;
@@ -431,7 +441,11 @@ Journalctl_seek(Journalctl *self, PyObject *args, PyObject *keywds)
 
     PyObject *arg;
     if (whence == SEEK_SET){
-        if (sd_journal_seek_head(self->j) !=0 ) {
+        int r;
+        Py_BEGIN_ALLOW_THREADS
+        r = sd_journal_seek_head(self->j);
+        Py_END_ALLOW_THREADS
+        if (r != 0) {
             PyErr_SetString(PyExc_IOError, "Error seeking to head");
             return NULL;
         }
@@ -445,7 +459,11 @@ Journalctl_seek(Journalctl *self, PyObject *args, PyObject *keywds)
         Py_DECREF(Journalctl_get_next(self, arg));
         Py_DECREF(arg);
     }else if (whence == SEEK_END){
-        if (sd_journal_seek_tail(self->j) != 0) {
+        int r;
+        Py_BEGIN_ALLOW_THREADS
+        r = sd_journal_seek_tail(self->j);
+        Py_END_ALLOW_THREADS
+        if (r != 0) {
             PyErr_SetString(PyExc_IOError, "Error seeking to tail");
             return NULL;
         }
@@ -503,7 +521,11 @@ Journalctl_seek_realtime(Journalctl *self, PyObject *args)
         return NULL;
     }
 
-    if (sd_journal_seek_realtime_usec(self->j, timestamp) != 0) {
+    int r;
+    Py_BEGIN_ALLOW_THREADS
+    r = sd_journal_seek_realtime_usec(self->j, timestamp);
+    Py_END_ALLOW_THREADS
+    if (r != 0) {
         PyErr_SetString(PyExc_IOError, "Error seek to time");
         return NULL;
     }
@@ -557,7 +579,11 @@ Journalctl_seek_monotonic(Journalctl *self, PyObject *args)
         }
     }
 
-    if (sd_journal_seek_monotonic_usec(self->j, sd_id, timestamp) != 0) {
+    int r;
+    Py_BEGIN_ALLOW_THREADS
+    r = sd_journal_seek_monotonic_usec(self->j, sd_id, timestamp);
+    Py_END_ALLOW_THREADS
+    if (r != 0) {
         PyErr_SetString(PyExc_IOError, "Error seek to time");
         return NULL;
     }
@@ -582,9 +608,13 @@ Journalctl_wait(Journalctl *self, PyObject *args, PyObject *keywds)
 
     int r;
     if ( timeout == 0LL) {
+        Py_BEGIN_ALLOW_THREADS
         r = sd_journal_wait(self->j, (uint64_t) -1);
+        Py_END_ALLOW_THREADS
     }else{
+        Py_BEGIN_ALLOW_THREADS
         r = sd_journal_wait(self->j, timeout * 1E6);
+        Py_END_ALLOW_THREADS
     }
 #if PY_MAJOR_VERSION >=3
     return PyLong_FromLong(r);
@@ -603,7 +633,11 @@ Journalctl_seek_cursor(Journalctl *self, PyObject *args)
     if (! PyArg_ParseTuple(args, "s", &cursor))
         return NULL;
 
-    if (sd_journal_seek_cursor(self->j, cursor) != 0) {
+    int r;
+    Py_BEGIN_ALLOW_THREADS
+    r = sd_journal_seek_cursor(self->j, cursor);
+    Py_END_ALLOW_THREADS
+    if (r != 0) {
         PyErr_SetString(PyExc_IOError, "Error seeking to cursor");
         return NULL;
     }
@@ -649,7 +683,11 @@ Journalctl_query_unique(Journalctl *self, PyObject *args)
     if (! PyArg_ParseTuple(args, "s", &query))
         return NULL;
 
-    if (sd_journal_query_unique(self->j, query) != 0) {
+    int r;
+    Py_BEGIN_ALLOW_THREADS
+    r = sd_journal_query_unique(self->j, query);
+    Py_END_ALLOW_THREADS
+    if (r != 0) {
         PyErr_SetString(PyExc_IOError, "Error querying journal");
         return NULL;
     }
