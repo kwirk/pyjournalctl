@@ -95,4 +95,3 @@ Known Issues
 
 TODO
 ----
-* Still seem to be some memory leaks...

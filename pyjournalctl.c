@@ -292,6 +292,7 @@ Journalctl_get_next(Journalctl *self, PyObject *args)
 #endif
         value = Journalctl___process_field(self, key, cursor, strlen(cursor));
         PyDict_SetItem(dict, key, value);
+        free(cursor);
         Py_DECREF(key);
         Py_DECREF(value);
     }
