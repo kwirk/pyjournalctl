@@ -231,7 +231,7 @@ Journalctl_get_next(Journalctl *self, PyObject *args)
     size_t msg_len;
     const char *delim_ptr;
     char bootid[33];
-    PyObject *key, *value;
+    PyObject *key, *value, *cur_value, *tmp_list;
 
     SD_JOURNAL_FOREACH_DATA(self->j, msg, msg_len) {
         delim_ptr = memchr(msg, '=', msg_len);
@@ -243,7 +243,20 @@ Journalctl_get_next(Journalctl *self, PyObject *args)
         if (strncmp(msg, "_BOOT_ID", 8) == 0)
             strncpy(bootid, (char *) delim_ptr + 1, 33);
         value = Journalctl___process_field(self, key, delim_ptr + 1, (const char*) msg + msg_len - (delim_ptr + 1) );
-        PyDict_SetItem(dict, key, value);
+        if (PyDict_Contains(dict, key)) {
+            cur_value = PyDict_GetItem(dict, key);
+            if (PyList_CheckExact(cur_value) && PyList_Size(cur_value) > 1) {
+                PyList_Append(cur_value, value);
+            }else{
+                tmp_list = PyList_New(0);
+                PyList_Append(tmp_list, cur_value);
+                PyList_Append(tmp_list, value);
+                PyDict_SetItem(dict, key, tmp_list);
+                Py_DECREF(tmp_list);
+            }
+        }else{
+            PyDict_SetItem(dict, key, value);
+        }
         Py_DECREF(key);
         Py_DECREF(value);
     }
