@@ -64,6 +64,11 @@ Journalctl_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 
         self->call_dict = PyRun_String("{"
             "'PRIORITY': int,"
+            "'LEADER': int,"
+            "'SESSION_ID': int,"
+            "'USERSPACE_USEC': int,"
+            "'INITRD_USEC': int,"
+            "'KERNEL_USEC': int,"
             "'_UID': int,"
             "'_GID': int,"
             "'_PID': int,"
@@ -75,9 +80,22 @@ Journalctl_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
             "'_SYSTEMD_OWNER_UID': int,"
             "'CODE_LINE': int,"
             "'ERRNO': int,"
+            "'EXIT_STATUS': int,"
             "'_SOURCE_REALTIME_TIMESTAMP': lambda x: datetime.datetime.fromtimestamp(float(x)/1E6),"
             "'__REALTIME_TIMESTAMP': lambda x: datetime.datetime.fromtimestamp(float(x)/1E6),"
+            "'_SOURCE_MONOTONIC_TIMESTAMP': lambda x: datetime.timedelta(microseconds=float(x)),"
             "'__MONOTONIC_TIMESTAMP': lambda x: datetime.timedelta(microseconds=float(x)),"
+#if PY_MAJOR_VERSION >=3
+            "'COREDUMP': bytes,"
+#else
+            "'COREDUMP': str,"
+#endif
+            "'COREDUMP_PID': int,"
+            "'COREDUMP_UID': int,"
+            "'COREDUMP_GID': int,"
+            "'COREDUMP_SESSION': int,"
+            "'COREDUMP_SIGNAL': int,"
+            "'COREDUMP_TIMESTAMP': lambda x: datetime.datetime.fromtimestamp(float(x)/1E6),"
             "}", Py_eval_input, globals, NULL);
     }
 
