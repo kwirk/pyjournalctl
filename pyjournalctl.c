@@ -835,6 +835,52 @@ static PyMemberDef Journalctl_members[] = {
     {NULL}  /* Sentinel */
 };
 
+static PyObject *
+Journalctl_get_data_threshold(Journalctl *self, void *closure)
+{
+    size_t cvalue;
+    PyObject *value;
+    int r;
+
+    r = sd_journal_get_data_threshold(self->j, &cvalue);
+    if ( r != 0){
+        PyErr_SetString(PyExc_RuntimeError, "Error getting data threshold");
+        return NULL;
+    }
+
+    value = PyInt_FromSize_t(cvalue);
+    return value;
+}
+
+static int
+Journalctl_set_data_threshold(Journalctl *self, PyObject *value, void *closure)
+{
+    if (value == NULL) {
+        PyErr_SetString(PyExc_TypeError, "Cannot delete data threshold");
+        return -1;
+    }
+    if (! PyInt_Check(value)){
+        PyErr_SetString(PyExc_TypeError, "Data threshold must be int");
+        return -1;
+    }
+    int r;
+    r = sd_journal_set_data_threshold(self->j, (size_t) PyInt_AsLong(value));
+    if ( r != 0){
+        PyErr_SetString(PyExc_RuntimeError, "Error setting data threshold");
+        return -1;
+    }
+    return 0;
+}
+
+static PyGetSetDef Journalctl_getseters[] = {
+    {"data_threshold",
+    (getter)Journalctl_get_data_threshold,
+    (setter)Journalctl_set_data_threshold,
+    "data threshold",
+    NULL},
+    {NULL}
+};
+
 static PyMethodDef Journalctl_methods[] = {
     {"get_next", (PyCFunction)Journalctl_get_next, METH_VARARGS,
     Journalctl_get_next__doc__},
@@ -901,7 +947,7 @@ static PyTypeObject JournalctlType = {
     Journalctl_iternext,              /* tp_iternext */
     Journalctl_methods,               /* tp_methods */
     Journalctl_members,               /* tp_members */
-    0,                                /* tp_getset */
+    Journalctl_getseters,             /* tp_getset */
     0,                                /* tp_base */
     0,                                /* tp_dict */
     0,                                /* tp_descr_get */
