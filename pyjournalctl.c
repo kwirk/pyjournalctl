@@ -158,8 +158,14 @@ Journalctl_init(Journalctl *self, PyObject *args, PyObject *keywds)
     Py_BEGIN_ALLOW_THREADS
     r = sd_journal_open(&self->j, flags);
     Py_END_ALLOW_THREADS
-    if (r < 0) {
-        PyErr_SetString(PyExc_IOError, "Error opening journal");
+    if (r == -EINVAL) {
+        PyErr_SetString(PyExc_ValueError, "Invalid flags");
+        return -1;
+    }else if (r == -ENOMEM) {
+        PyErr_SetString(PyExc_MemoryError, "Not enough memory");
+        return 1;
+    }else if (r < 0) {
+        PyErr_SetString(PyExc_RuntimeError, "Error opening journal");
         return 1;
     }
 
@@ -236,7 +242,7 @@ Journalctl_get_next(Journalctl *self, PyObject *args)
     }
 
     if (r < 0) {
-        PyErr_SetString(PyExc_IOError, "Error getting next message");
+        PyErr_SetString(PyExc_RuntimeError, "Error getting next message");
         return NULL;
     }else if ( r == 0) { //EOF
         return PyDict_New();
@@ -377,8 +383,16 @@ Journalctl_add_match(Journalctl *self, PyObject *args)
         match_len = match_key_len;
     }
 
-    if (sd_journal_add_match(self->j, match, match_len) != 0) {
-        PyErr_SetString(PyExc_IOError, "Error adding match");
+    int r;
+    r = sd_journal_add_match(self->j, match, match_len);
+    if (r == -EINVAL) {
+        PyErr_SetString(PyExc_ValueError, "Invalid match");
+        return NULL;
+    }else if (r == -ENOMEM) {
+        PyErr_SetString(PyExc_MemoryError, "Not enough memory");
+        return NULL;
+    }else if (r < 0) {
+        PyErr_SetString(PyExc_RuntimeError, "Error adding match");
         return NULL;
     }
 
@@ -433,8 +447,13 @@ PyDoc_STRVAR(Journalctl_add_disjunction__doc__,
 static PyObject *
 Journalctl_add_disjunction(Journalctl *self, PyObject *args)
 {
-    if (sd_journal_add_disjunction(self->j) != 0) {
-        PyErr_SetString(PyExc_IOError, "Error adding disjunction");
+    int r;
+    r = sd_journal_add_disjunction(self->j);
+    if (r == -ENOMEM) {
+        PyErr_SetString(PyExc_MemoryError, "Not enough memory");
+        return NULL;
+    }else if (r < 0) {
+        PyErr_SetString(PyExc_RuntimeError, "Error adding disjunction");
         return NULL;
     }
     Py_RETURN_NONE;
@@ -446,10 +465,6 @@ PyDoc_STRVAR(Journalctl_flush_matches__doc__,
 static PyObject *
 Journalctl_flush_matches(Journalctl *self, PyObject *args)
 {
-    //if (sd_journal_flush_matches(self->j) != 0) {
-    //    PyErr_SetString(PyExc_IOError, "Error flushing matches");
-    //    return NULL;
-    //}
     sd_journal_flush_matches(self->j);
     Py_RETURN_NONE;
 }
@@ -477,8 +492,8 @@ Journalctl_seek(Journalctl *self, PyObject *args, PyObject *keywds)
         Py_BEGIN_ALLOW_THREADS
         r = sd_journal_seek_head(self->j);
         Py_END_ALLOW_THREADS
-        if (r != 0) {
-            PyErr_SetString(PyExc_IOError, "Error seeking to head");
+        if (r < 0) {
+            PyErr_SetString(PyExc_RuntimeError, "Error seeking to head");
             return NULL;
         }
         if (offset > 0LL) {
@@ -495,8 +510,8 @@ Journalctl_seek(Journalctl *self, PyObject *args, PyObject *keywds)
         Py_BEGIN_ALLOW_THREADS
         r = sd_journal_seek_tail(self->j);
         Py_END_ALLOW_THREADS
-        if (r != 0) {
-            PyErr_SetString(PyExc_IOError, "Error seeking to tail");
+        if (r < 0) {
+            PyErr_SetString(PyExc_RuntimeError, "Error seeking to tail");
             return NULL;
         }
         arg = Py_BuildValue("(L)", -1LL);
@@ -508,7 +523,7 @@ Journalctl_seek(Journalctl *self, PyObject *args, PyObject *keywds)
             Py_DECREF(arg);
         }
     }else{
-        PyErr_SetString(PyExc_IOError, "Invalid value for whence");
+        PyErr_SetString(PyExc_ValueError, "Invalid value for whence");
         return NULL;
     }
     Py_RETURN_NONE;
@@ -557,8 +572,8 @@ Journalctl_seek_realtime(Journalctl *self, PyObject *args)
     Py_BEGIN_ALLOW_THREADS
     r = sd_journal_seek_realtime_usec(self->j, timestamp);
     Py_END_ALLOW_THREADS
-    if (r != 0) {
-        PyErr_SetString(PyExc_IOError, "Error seek to time");
+    if (r < 0) {
+        PyErr_SetString(PyExc_RuntimeError, "Error seek to time");
         return NULL;
     }
     Py_RETURN_NONE;
@@ -599,24 +614,32 @@ Journalctl_seek_monotonic(Journalctl *self, PyObject *args)
     }
 
     sd_id128_t sd_id;
+    int r;
     if (bootid) {
-        if (sd_id128_from_string(bootid, &sd_id) != 0) {
+        r = sd_id128_from_string(bootid, &sd_id);
+        if (r == -EINVAL) {
             PyErr_SetString(PyExc_ValueError, "Invalid bootid");
+            return NULL;
+        } else if (r < 0) {
+            PyErr_SetString(PyExc_RuntimeError, "Error processing bootid");
             return NULL;
         }
     }else{
-        if (sd_id128_get_boot(&sd_id) != 0) {
+        r = sd_id128_get_boot(&sd_id);
+        if (r == -EIO) {
             PyErr_SetString(PyExc_IOError, "Error getting current boot ID");
+            return NULL;
+        } else if (r < 0) {
+            PyErr_SetString(PyExc_RuntimeError, "Error getting current boot ID");
             return NULL;
         }
     }
 
-    int r;
     Py_BEGIN_ALLOW_THREADS
     r = sd_journal_seek_monotonic_usec(self->j, sd_id, timestamp);
     Py_END_ALLOW_THREADS
-    if (r != 0) {
-        PyErr_SetString(PyExc_IOError, "Error seek to time");
+    if (r < 0) {
+        PyErr_SetString(PyExc_RuntimeError, "Error seek to time");
         return NULL;
     }
     Py_RETURN_NONE;
@@ -669,8 +692,14 @@ Journalctl_seek_cursor(Journalctl *self, PyObject *args)
     Py_BEGIN_ALLOW_THREADS
     r = sd_journal_seek_cursor(self->j, cursor);
     Py_END_ALLOW_THREADS
-    if (r != 0) {
-        PyErr_SetString(PyExc_IOError, "Error seeking to cursor");
+    if (r == -EINVAL) {
+        PyErr_SetString(PyExc_ValueError, "Invalid cursor");
+        return NULL;
+    }else if (r == -ENOMEM) {
+        PyErr_SetString(PyExc_MemoryError, "Not enough memory");
+        return NULL;
+    }else if (r < 0) {
+        PyErr_SetString(PyExc_RuntimeError, "Error seeking to cursor");
         return NULL;
     }
     Py_RETURN_NONE;
@@ -719,8 +748,14 @@ Journalctl_query_unique(Journalctl *self, PyObject *args)
     Py_BEGIN_ALLOW_THREADS
     r = sd_journal_query_unique(self->j, query);
     Py_END_ALLOW_THREADS
-    if (r != 0) {
-        PyErr_SetString(PyExc_IOError, "Error querying journal");
+    if (r == -EINVAL) {
+        PyErr_SetString(PyExc_ValueError, "Invalid field name");
+        return NULL;
+    } else if (r == -ENOMEM) {
+        PyErr_SetString(PyExc_MemoryError, "Not enough memory");
+        return NULL;
+    } else if (r < 0) {
+        PyErr_SetString(PyExc_RuntimeError, "Error querying journal");
         return NULL;
     }
 
@@ -780,8 +815,13 @@ static PyObject *
 Journalctl_this_boot(Journalctl *self, PyObject *args)
 {
     sd_id128_t sd_id;
-    if (sd_id128_get_boot(&sd_id) != 0) {
+    int r;
+    r = sd_id128_get_boot(&sd_id);
+    if (r == -EIO) {
         PyErr_SetString(PyExc_IOError, "Error getting current boot ID");
+        return NULL;
+    } else if (r < 0) {
+        PyErr_SetString(PyExc_RuntimeError, "Error getting current boot ID");
         return NULL;
     }
 
@@ -792,7 +832,6 @@ Journalctl_this_boot(Journalctl *self, PyObject *args)
     arg = Py_BuildValue("(ss)", "_BOOT_ID", bootid);
     if (! Journalctl_add_match(self, arg)) {
         Py_DECREF(arg);
-        PyErr_SetString(PyExc_IOError, "Error adding match for boot ID");
         return NULL;
     }
     Py_DECREF(arg);
@@ -807,8 +846,13 @@ static PyObject *
 Journalctl_this_machine(Journalctl *self, PyObject *args)
 {
     sd_id128_t sd_id;
-    if (sd_id128_get_machine(&sd_id) != 0) {
-        PyErr_SetString(PyExc_IOError, "Error getting current machine ID");
+    int r;
+    r = sd_id128_get_machine(&sd_id);
+    if (r == -EIO) {
+        PyErr_SetString(PyExc_IOError, "Error getting current boot ID");
+        return NULL;
+    } else if (r < 0) {
+        PyErr_SetString(PyExc_RuntimeError, "Error getting current boot ID");
         return NULL;
     }
 
@@ -819,7 +863,6 @@ Journalctl_this_machine(Journalctl *self, PyObject *args)
     arg = Py_BuildValue("(ss)", "_MACHINE_ID", machineid);
     if (! Journalctl_add_match(self, arg)) {
         Py_DECREF(arg);
-        PyErr_SetString(PyExc_IOError, "Error adding match for machine ID");
         return NULL;
     }
     Py_DECREF(arg);
@@ -885,7 +928,7 @@ Journalctl_get_data_threshold(Journalctl *self, void *closure)
     int r;
 
     r = sd_journal_get_data_threshold(self->j, &cvalue);
-    if ( r != 0){
+    if (r < 0){
         PyErr_SetString(PyExc_RuntimeError, "Error getting data threshold");
         return NULL;
     }
@@ -907,7 +950,7 @@ Journalctl_set_data_threshold(Journalctl *self, PyObject *value, void *closure)
     }
     int r;
     r = sd_journal_set_data_threshold(self->j, (size_t) PyInt_AsLong(value));
-    if ( r != 0){
+    if (r < 0){
         PyErr_SetString(PyExc_RuntimeError, "Error setting data threshold");
         return -1;
     }
