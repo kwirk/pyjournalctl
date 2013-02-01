@@ -827,13 +827,55 @@ Journalctl_this_machine(Journalctl *self, PyObject *args)
     Py_RETURN_NONE;
 }
 
-static PyMemberDef Journalctl_members[] = {
-    {"default_call", T_OBJECT_EX, offsetof(Journalctl, default_call), 0,
-    "default call for values for fields"},
-    {"call_dict", T_OBJECT_EX, offsetof(Journalctl, call_dict), 0,
-    "dictionary of calls for each field"},
-    {NULL}  /* Sentinel */
-};
+static PyObject *
+Journalctl_get_default_call(Journalctl *self, void *closure)
+{
+    Py_INCREF(self->default_call);
+    return self->default_call;
+}
+
+static int
+Journalctl_set_default_call(Journalctl *self, PyObject *value, void *closure)
+{
+    if (value == NULL) {
+        PyErr_SetString(PyExc_TypeError, "Cannot delete default_call");
+        return -1;
+    }
+    if (! PyCallable_Check(value)) {
+        PyErr_SetString(PyExc_TypeError, "default_call must be callable");
+        return -1;
+    }
+    Py_DECREF(self->default_call);
+    Py_INCREF(value);
+    self->default_call = value;
+
+    return 0;
+}
+
+static PyObject *
+Journalctl_get_call_dict(Journalctl *self, void *closure)
+{
+    Py_INCREF(self->call_dict);
+    return self->call_dict;
+}
+
+static int
+Journalctl_set_call_dict(Journalctl *self, PyObject *value, void *closure)
+{
+    if (value == NULL) {
+        PyErr_SetString(PyExc_TypeError, "Cannot delete call_dict");
+        return -1;
+    }
+    if (! PyDict_Check(value)) {
+        PyErr_SetString(PyExc_TypeError, "call_dict must be dict type");
+        return -1;
+    }
+    Py_DECREF(self->call_dict);
+    Py_INCREF(value);
+    self->call_dict = value;
+
+    return 0;
+}
 
 static PyObject *
 Journalctl_get_data_threshold(Journalctl *self, void *closure)
@@ -877,6 +919,16 @@ static PyGetSetDef Journalctl_getseters[] = {
     (getter)Journalctl_get_data_threshold,
     (setter)Journalctl_set_data_threshold,
     "data threshold",
+    NULL},
+    {"call_dict",
+    (getter)Journalctl_get_call_dict,
+    (setter)Journalctl_set_call_dict,
+    "dictionary of calls for each field",
+    NULL},
+    {"default_call",
+    (getter)Journalctl_get_default_call,
+    (setter)Journalctl_set_default_call,
+    "default call for values for fields",
     NULL},
     {NULL}
 };
@@ -946,7 +998,7 @@ static PyTypeObject JournalctlType = {
     Journalctl_iter,                  /* tp_iter */
     Journalctl_iternext,              /* tp_iternext */
     Journalctl_methods,               /* tp_methods */
-    Journalctl_members,               /* tp_members */
+    0,                                /* tp_members */
     Journalctl_getseters,             /* tp_getset */
     0,                                /* tp_base */
     0,                                /* tp_dict */
