@@ -933,7 +933,11 @@ Journalctl_get_data_threshold(Journalctl *self, void *closure)
         return NULL;
     }
 
+#if PY_MAJOR_VERSION >=3
+    value = PyLong_FromSize_t(cvalue);
+#else
     value = PyInt_FromSize_t(cvalue);
+#endif
     return value;
 }
 
@@ -944,12 +948,20 @@ Journalctl_set_data_threshold(Journalctl *self, PyObject *value, void *closure)
         PyErr_SetString(PyExc_TypeError, "Cannot delete data threshold");
         return -1;
     }
+#if PY_MAJOR_VERSION >=3
+    if (! PyLong_Check(value)){
+#else
     if (! PyInt_Check(value)){
+#endif
         PyErr_SetString(PyExc_TypeError, "Data threshold must be int");
         return -1;
     }
     int r;
+#if PY_MAJOR_VERSION >=3
+    r = sd_journal_set_data_threshold(self->j, (size_t) PyLong_AsLong(value));
+#else
     r = sd_journal_set_data_threshold(self->j, (size_t) PyInt_AsLong(value));
+#endif
     if (r < 0){
         PyErr_SetString(PyExc_RuntimeError, "Error setting data threshold");
         return -1;
