@@ -254,7 +254,6 @@ Journalctl_get_next(Journalctl *self, PyObject *args)
     const void *msg;
     size_t msg_len;
     const char *delim_ptr;
-    char bootid[33];
     PyObject *key, *value, *cur_value, *tmp_list;
 
     SD_JOURNAL_FOREACH_DATA(self->j, msg, msg_len) {
@@ -264,8 +263,6 @@ Journalctl_get_next(Journalctl *self, PyObject *args)
 #else
         key = PyString_FromStringAndSize(msg, delim_ptr - (const char*) msg);
 #endif
-        if (strncmp(msg, "_BOOT_ID", 8) == 0)
-            strncpy(bootid, (char *) delim_ptr + 1, 33);
         value = Journalctl___process_field(self, key, delim_ptr + 1, (const char*) msg + msg_len - (delim_ptr + 1) );
         if (PyDict_Contains(dict, key)) {
             cur_value = PyDict_GetItem(dict, key);
@@ -302,22 +299,20 @@ Journalctl_get_next(Journalctl *self, PyObject *args)
     }
 
     sd_id128_t sd_id;
-    if (sd_id128_from_string(bootid, &sd_id) == 0) {
-        uint64_t monotonic;
-        if (sd_journal_get_monotonic_usec(self->j, &monotonic, &sd_id) == 0) {
-            char monotonic_str[20];
-            sprintf(monotonic_str, "%llu", (long long unsigned) monotonic);
+    uint64_t monotonic;
+    if (sd_journal_get_monotonic_usec(self->j, &monotonic, &sd_id) == 0) {
+        char monotonic_str[20];
+        sprintf(monotonic_str, "%llu", (long long unsigned) monotonic);
 #if PY_MAJOR_VERSION >=3
-            key = PyUnicode_FromString("__MONOTONIC_TIMESTAMP");
+        key = PyUnicode_FromString("__MONOTONIC_TIMESTAMP");
 #else
-            key = PyString_FromString("__MONOTONIC_TIMESTAMP");
+        key = PyString_FromString("__MONOTONIC_TIMESTAMP");
 #endif
-            value = Journalctl___process_field(self, key, monotonic_str, strlen(monotonic_str));
+        value = Journalctl___process_field(self, key, monotonic_str, strlen(monotonic_str));
 
-            PyDict_SetItem(dict, key, value);
-            Py_DECREF(key);
-            Py_DECREF(value);
-        }
+        PyDict_SetItem(dict, key, value);
+        Py_DECREF(key);
+        Py_DECREF(value);
     }
 
     char *cursor;
