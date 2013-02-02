@@ -2,7 +2,7 @@
 pyjournalctl
 ============
 
-A python module that reads systemd journald similar to journalctl
+A python module that reads systemd journal similar to journalctl
 
 Requirements
 ------------
@@ -69,7 +69,7 @@ True
 >>> journal.seek(-1000,2) # Last 1000 entries
 >>> priorities = set(range(0,5))
 >>> journal.log_level(4) # Log level from 0 - 4
->>> priorities >= set(int(entry['PRIORITY']) for entry in journal)
+>>> priorities >= set(entry['PRIORITY'] for entry in journal)
 True
 >>> systemd_units = journal.query_unique("_SYSTEMD_UNIT")
 >>> print("Unique systemd units in journal: %s" % ', '.join(systemd_units)) # doctest: +ELLIPSIS

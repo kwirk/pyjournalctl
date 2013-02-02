@@ -1,5 +1,5 @@
 /*
-pyjournalctl - Python module that reads systemd journald similar to journalctl
+pyjournalctl - Python module that reads systemd journal similar to journalctl
 Copyright (C) 2012  Steven Hiscocks
 
 This library is free software; you can redistribute it and/or
@@ -1066,7 +1066,7 @@ static PyTypeObject JournalctlType = {
 static PyModuleDef pyjournalctl_module = {
     PyModuleDef_HEAD_INIT,
     "pyjournalctl",
-    "Module that interfaces with journalctl.",
+    "Module that reads systemd journal similar to journalctl.",
     -1,
     NULL, NULL, NULL, NULL, NULL
 };
@@ -1096,7 +1096,7 @@ initpyjournalctl(void)
         return NULL;
 #else
     m = Py_InitModule3("pyjournalctl", NULL,
-                       "Module that interfaces with journalctl.");
+                   "Module that reads systemd journal similar to journalctl.");
     if (m == NULL)
         return;
 #endif
