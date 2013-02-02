@@ -179,7 +179,7 @@ Journalctl___process_field(Journalctl *self, PyObject *key, const void *value, s
     if (PyDict_Check(self->call_dict))
         callable = PyDict_GetItem(self->call_dict, key);
 
-    if (callable) {
+    if (PyCallable_Check(callable)) {
 #if PY_MAJOR_VERSION >=3
         return_value = PyObject_CallFunction(callable, "y#", value, value_len);
 #else
@@ -188,7 +188,7 @@ Journalctl___process_field(Journalctl *self, PyObject *key, const void *value, s
         if (!return_value)
             PyErr_Clear();
     }
-    if (!return_value)
+    if (!return_value && PyCallable_Check(self->default_call))
 #if PY_MAJOR_VERSION >=3
         return_value = PyObject_CallFunction(self->default_call, "y#", value, value_len);
 #else
@@ -434,6 +434,8 @@ Journalctl_add_matches(Journalctl *self, PyObject *args)
         arg = Py_BuildValue("OO", key, value);
         Journalctl_add_match(self, arg);
         Py_DECREF(arg);
+        if (PyErr_Occurred())
+            return NULL;
     }
 
     Py_DECREF(dict);
@@ -804,6 +806,8 @@ Journalctl_log_level(Journalctl *self, PyObject *args)
         arg = Py_BuildValue("(ss)", "PRIORITY", level_str);
         Journalctl_add_match(self, arg);
         Py_DECREF(arg);
+        if (PyErr_Occurred())
+            return NULL;
     }
     Py_RETURN_NONE;
 }
@@ -830,11 +834,10 @@ Journalctl_this_boot(Journalctl *self, PyObject *args)
 
     PyObject *arg;
     arg = Py_BuildValue("(ss)", "_BOOT_ID", bootid);
-    if (! Journalctl_add_match(self, arg)) {
-        Py_DECREF(arg);
-        return NULL;
-    }
+    Journalctl_add_match(self, arg);
     Py_DECREF(arg);
+    if (PyErr_Occurred())
+        return NULL;
 
     Py_RETURN_NONE;
 }
@@ -861,11 +864,10 @@ Journalctl_this_machine(Journalctl *self, PyObject *args)
 
     PyObject *arg;
     arg = Py_BuildValue("(ss)", "_MACHINE_ID", machineid);
-    if (! Journalctl_add_match(self, arg)) {
-        Py_DECREF(arg);
-        return NULL;
-    }
+    Journalctl_add_match(self, arg);
     Py_DECREF(arg);
+    if (PyErr_Occurred())
+        return NULL;
 
     Py_RETURN_NONE;
 }
