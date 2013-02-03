@@ -917,7 +917,7 @@ Journalctl_set_call_dict(Journalctl *self, PyObject *value, void *closure)
     return 0;
 }
 
-static PyObject *
+/*static PyObject *
 Journalctl_get_data_threshold(Journalctl *self, void *closure)
 {
     size_t cvalue;
@@ -964,14 +964,14 @@ Journalctl_set_data_threshold(Journalctl *self, PyObject *value, void *closure)
         return -1;
     }
     return 0;
-}
+} */
 
 static PyGetSetDef Journalctl_getseters[] = {
-    {"data_threshold",
+/*    {"data_threshold",
     (getter)Journalctl_get_data_threshold,
     (setter)Journalctl_set_data_threshold,
     "data threshold",
-    NULL},
+    NULL},*/
     {"call_dict",
     (getter)Journalctl_get_call_dict,
     (setter)Journalctl_set_call_dict,
