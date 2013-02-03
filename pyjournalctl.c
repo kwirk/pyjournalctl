@@ -17,6 +17,7 @@ License along with this library; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 */
 #include <systemd/sd-journal.h>
+#include <systemd/sd-messages.h>
 
 #include <Python.h>
 #include <structmember.h>
@@ -434,6 +435,26 @@ Journalctl_add_matches(Journalctl *self, PyObject *args)
     }
 
     Py_DECREF(dict);
+    Py_RETURN_NONE;
+}
+
+PyDoc_STRVAR(Journalctl_add_messageid_match__doc__,
+"add_messageid_match(messageid) -> None\n\n"
+"Equivalent to add_match(\"MESSAGE_ID\", messageid).\n"
+"Allows easier adding of match for SD_MESSAGE_* constants.");
+static PyObject *
+Journalctl_add_messageid_match(Journalctl *self, PyObject *args)
+{
+    PyObject *value;
+    if (! PyArg_ParseTuple(args, "O", &value))
+        return NULL;
+
+    PyObject *arg;
+    arg = Py_BuildValue("sO", "MESSAGE_ID", value);
+    Journalctl_add_match(self, arg);
+    Py_DECREF(arg);
+    if (PyErr_Occurred())
+        return NULL;
     Py_RETURN_NONE;
 }
 
@@ -994,6 +1015,8 @@ static PyMethodDef Journalctl_methods[] = {
     Journalctl_add_match__doc__},
     {"add_matches", (PyCFunction)Journalctl_add_matches, METH_VARARGS,
     Journalctl_add_matches__doc__},
+    {"add_messageid_match", (PyCFunction)Journalctl_add_messageid_match,
+    METH_VARARGS, Journalctl_add_messageid_match__doc__},
     {"add_disjunction", (PyCFunction)Journalctl_add_disjunction, METH_NOARGS,
     Journalctl_add_disjunction__doc__},
     {"flush_matches", (PyCFunction)Journalctl_flush_matches, METH_NOARGS,
@@ -1110,6 +1133,49 @@ initpyjournalctl(void)
     PyModule_AddIntConstant(m, "SD_JOURNAL_LOCAL_ONLY", SD_JOURNAL_LOCAL_ONLY);
     PyModule_AddIntConstant(m, "SD_JOURNAL_RUNTIME_ONLY", SD_JOURNAL_RUNTIME_ONLY);
     PyModule_AddIntConstant(m, "SD_JOURNAL_SYSTEM_ONLY", SD_JOURNAL_SYSTEM_ONLY);
+
+    /* Message Constants */
+    PyModule_AddStringConstant(m, "SD_MESSAGE_JOURNAL_START", SD_ID128_CONST_STR(SD_MESSAGE_JOURNAL_START));
+    PyModule_AddStringConstant(m, "SD_MESSAGE_JOURNAL_STOP", SD_ID128_CONST_STR(SD_MESSAGE_JOURNAL_STOP));
+    PyModule_AddStringConstant(m, "SD_MESSAGE_JOURNAL_DROPPED", SD_ID128_CONST_STR(SD_MESSAGE_JOURNAL_DROPPED));
+    PyModule_AddStringConstant(m, "SD_MESSAGE_COREDUMP", SD_ID128_CONST_STR(SD_MESSAGE_COREDUMP));
+#ifdef SD_MESSAGE_JOURNAL_MISSED
+    PyModule_AddStringConstant(m, "SD_MESSAGE_JOURNAL_MISSED", SD_ID128_CONST_STR(SD_MESSAGE_JOURNAL_MISSED));
+#endif /* SD_MESSAGE_JOURNAL_MISSED */
+#ifdef SD_MESSAGE_SESSION_START
+    PyModule_AddStringConstant(m, "SD_MESSAGE_SESSION_START", SD_ID128_CONST_STR(SD_MESSAGE_SESSION_START));
+    PyModule_AddStringConstant(m, "SD_MESSAGE_SESSION_STOP", SD_ID128_CONST_STR(SD_MESSAGE_SESSION_STOP));
+    PyModule_AddStringConstant(m, "SD_MESSAGE_SEAT_START", SD_ID128_CONST_STR(SD_MESSAGE_SEAT_START));
+    PyModule_AddStringConstant(m, "SD_MESSAGE_SEAT_STOP", SD_ID128_CONST_STR(SD_MESSAGE_SEAT_STOP));
+    PyModule_AddStringConstant(m, "SD_MESSAGE_TIME_CHANGE", SD_ID128_CONST_STR(SD_MESSAGE_TIME_CHANGE));
+    PyModule_AddStringConstant(m, "SD_MESSAGE_TIMEZONE_CHANGE", SD_ID128_CONST_STR(SD_MESSAGE_TIMEZONE_CHANGE));
+    PyModule_AddStringConstant(m, "SD_MESSAGE_STARTUP_FINISHED", SD_ID128_CONST_STR(SD_MESSAGE_STARTUP_FINISHED));
+    PyModule_AddStringConstant(m, "SD_MESSAGE_SLEEP_START", SD_ID128_CONST_STR(SD_MESSAGE_SLEEP_START));
+    PyModule_AddStringConstant(m, "SD_MESSAGE_SLEEP_STOP", SD_ID128_CONST_STR(SD_MESSAGE_SLEEP_STOP));
+    PyModule_AddStringConstant(m, "SD_MESSAGE_SHUTDOWN", SD_ID128_CONST_STR(SD_MESSAGE_SHUTDOWN));
+    PyModule_AddStringConstant(m, "SD_MESSAGE_UNIT_STARTING", SD_ID128_CONST_STR(SD_MESSAGE_UNIT_STARTING));
+    PyModule_AddStringConstant(m, "SD_MESSAGE_UNIT_STARTED", SD_ID128_CONST_STR(SD_MESSAGE_UNIT_STARTED));
+    PyModule_AddStringConstant(m, "SD_MESSAGE_UNIT_STOPPING", SD_ID128_CONST_STR(SD_MESSAGE_UNIT_STOPPING));
+    PyModule_AddStringConstant(m, "SD_MESSAGE_UNIT_STOPPED", SD_ID128_CONST_STR(SD_MESSAGE_UNIT_STOPPED));
+    PyModule_AddStringConstant(m, "SD_MESSAGE_UNIT_FAILED", SD_ID128_CONST_STR(SD_MESSAGE_UNIT_FAILED));
+    PyModule_AddStringConstant(m, "SD_MESSAGE_UNIT_RELOADING", SD_ID128_CONST_STR(SD_MESSAGE_UNIT_RELOADING));
+    PyModule_AddStringConstant(m, "SD_MESSAGE_UNIT_RELOADED", SD_ID128_CONST_STR(SD_MESSAGE_UNIT_RELOADED));
+    PyModule_AddStringConstant(m, "SD_MESSAGE_FORWARD_SYSLOG_MISSED", SD_ID128_CONST_STR(SD_MESSAGE_FORWARD_SYSLOG_MISSED));
+#endif /* SD_MESSAGE_SESSION_START */
+#ifdef SD_MESSAGE_SPAWN_FAILED
+    PyModule_AddStringConstant(m, "SD_MESSAGE_SPAWN_FAILED", SD_ID128_CONST_STR(SD_MESSAGE_SPAWN_FAILED));
+#endif /* SD_MESSAGE_SPAWN_FAILED */
+#ifdef SD_MESSAGE_OVERMOUNTING
+    PyModule_AddStringConstant(m, "SD_MESSAGE_OVERMOUNTING", SD_ID128_CONST_STR(SD_MESSAGE_OVERMOUNTING));
+#endif /* SD_MESSAGE_OVERMOUNTING */
+#ifdef SD_MESSAGE_LID_OPENED
+    PyModule_AddStringConstant(m, "SD_MESSAGE_LID_OPENED", SD_ID128_CONST_STR(SD_MESSAGE_LID_OPENED));
+    PyModule_AddStringConstant(m, "SD_MESSAGE_LID_CLOSED", SD_ID128_CONST_STR(SD_MESSAGE_LID_CLOSED));
+    PyModule_AddStringConstant(m, "SD_MESSAGE_POWER_KEY", SD_ID128_CONST_STR(SD_MESSAGE_POWER_KEY));
+    PyModule_AddStringConstant(m, "SD_MESSAGE_SUSPEND_KEY", SD_ID128_CONST_STR(SD_MESSAGE_SUSPEND_KEY));
+    PyModule_AddStringConstant(m, "SD_MESSAGE_HIBERNATE_KEY", SD_ID128_CONST_STR(SD_MESSAGE_HIBERNATE_KEY));
+#endif /* SD_MESSAGE_LID_OPENED */
+    /* End message Constants */
 #if PY_MAJOR_VERSION >= 3
     return m;
 #endif
