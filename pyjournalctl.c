@@ -1103,7 +1103,7 @@ initpyjournalctl(void)
 
     Py_INCREF(&JournalctlType);
     PyModule_AddObject(m, "Journalctl", (PyObject *)&JournalctlType);
-    PyModule_AddStringConstant(m, "__version__", "0.6.1");
+    PyModule_AddStringConstant(m, "__version__", "0.7.0");
     PyModule_AddIntConstant(m, "SD_JOURNAL_NOP", SD_JOURNAL_NOP);
     PyModule_AddIntConstant(m, "SD_JOURNAL_APPEND", SD_JOURNAL_APPEND);
     PyModule_AddIntConstant(m, "SD_JOURNAL_INVALIDATE", SD_JOURNAL_INVALIDATE);
