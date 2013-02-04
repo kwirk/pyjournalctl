@@ -21,7 +21,7 @@ Usage Examples
 --------------
 >>> import pyjournalctl
 >>> journal = pyjournalctl.Journalctl()
->>> journal.add_matches({"PRIORITY": "5", "_PID": "1"})
+>>> journal.add_match(PRIORITY="5", _PID="1")
 >>> entry = journal.get_next()
 >>> print("PRIORITY: %(PRIORITY)i" % entry)
 PRIORITY: 5
@@ -36,10 +36,10 @@ MESSAGE: ...
 Journal started
 >>> journal.flush_matches()
 >>> journal.seek(100) # 100 entries from start
->>> journal.add_match("_TRANSPORT", "kernel")
+>>> journal.add_match("_TRANSPORT=kernel")
 >>> journal.add_disjunction() # OR next matches
->>> journal.add_match("PRIORITY", "5")
->>> journal.add_match("_UID", "0")
+>>> journal.add_match("PRIORITY=5")
+>>> journal.add_match("_UID=0")
 >>> entry = journal.get_next(2) # Get second match
 >>> entry.get("_TRANSPORT") == "kernel" or (
 ...     entry.get('PRIORITY') == 5 and entry.get("_UID") == 0)

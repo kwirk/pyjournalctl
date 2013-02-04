@@ -352,44 +352,96 @@ Journalctl_get_previous(Journalctl *self, PyObject *args)
 }
 
 PyDoc_STRVAR(Journalctl_add_match__doc__,
-"add_match(field[, value]) -> None\n\n"
+"add_match(match, ..., field=value, ...) -> None\n\n"
 "Add a match to filter journal log entries. All matches of different\n"
 "field are combined in logical AND, and matches of the same field\n"
 "are automatically combined in logical OR.\n"
-"If `value` is not passed, `field` must include the value in the\n"
-"form of \"FIELD=VALUE\".");
+"Matches can be passed as strings \"field=value\", or keyword\n"
+"arguments field=\"value\".");
 static PyObject *
-Journalctl_add_match(Journalctl *self, PyObject *args)
+Journalctl_add_match(Journalctl *self, PyObject *args, PyObject *keywds)
 {
-    char *match_key, *match_value=NULL;
-    int match_key_len, match_value_len;
-    if (! PyArg_ParseTuple(args, "s#|s#", &match_key, &match_key_len, &match_value, &match_value_len))
-        return NULL;
+    Py_ssize_t arg_match_len;
+    char *arg_match;
+    int i, r;
+    for (i = 0; i < PySequence_Size(args); i++) {
+#if PY_MAJOR_VERSION >=3
+        PyObject *arg;
+        arg = PySequence_Fast_GET_ITEM(args, i);
+        if (PyUnicode_Check(arg)) {
+            arg_match = PyUnicode_AsUTF8AndSize(arg, &arg_match_len);
+        }else if (PyBytes_Check(arg)) {
+            PyBytes_AsStringAndSize(arg, &arg_match, &arg_match_len);
+        }else{
+            PyErr_SetString(PyExc_TypeError, "expected bytes or string");
+        }
+#else
+        PyString_AsStringAndSize(PySequence_Fast_GET_ITEM(args, i), &arg_match, &arg_match_len);
+#endif
+        if (PyErr_Occurred())
+            return NULL;
+        r = sd_journal_add_match(self->j, arg_match, arg_match_len);
+        if (r == -EINVAL) {
+            PyErr_SetString(PyExc_ValueError, "Invalid match");
+            return NULL;
+        }else if (r == -ENOMEM) {
+            PyErr_SetString(PyExc_MemoryError, "Not enough memory");
+            return NULL;
+        }else if (r < 0) {
+            PyErr_SetString(PyExc_RuntimeError, "Error adding match");
+            return NULL;
+        }
+    }
 
-    void *match;
+    if (! keywds)
+        Py_RETURN_NONE;
+
+    PyObject *key, *value;
+    Py_ssize_t pos=0, match_key_len, match_value_len;
     int match_len;
-    if (match_value) {
+    char *match_key, *match_value;
+    void *match;
+    while (PyDict_Next(keywds, &pos, &key, &value)) {
+#if PY_MAJOR_VERSION >=3
+        if (PyUnicode_Check(key)) {
+            match_key = PyUnicode_AsUTF8AndSize(key, &match_key_len);
+        }else if (PyBytes_Check(key)) {
+            PyBytes_AsStringAndSize(key, &match_key, &match_key_len);
+        }else{
+            PyErr_SetString(PyExc_TypeError, "expected bytes or string");
+        }
+        if (PyUnicode_Check(value)) {
+            match_value = PyUnicode_AsUTF8AndSize(value, &match_value_len);
+        }else if (PyBytes_Check(value)) {
+            PyBytes_AsStringAndSize(value, &match_value, &match_value_len);
+        }else{
+            PyErr_SetString(PyExc_TypeError, "expected bytes or string");
+        }
+#else
+        PyString_AsStringAndSize(key, &match_key, &match_key_len);
+        PyString_AsStringAndSize(value, &match_value, &match_value_len);
+#endif
+        if (PyErr_Occurred())
+            return NULL;
+
         match_len = match_key_len + 1 + match_value_len;
         match = malloc(match_len);
         memcpy(match, match_key, match_key_len);
         memcpy(match + match_key_len, "=", 1);
         memcpy(match + match_key_len + 1, match_value, match_value_len);
-    }else{
-        match = match_key;
-        match_len = match_key_len;
-    }
 
-    int r;
-    r = sd_journal_add_match(self->j, match, match_len);
-    if (r == -EINVAL) {
-        PyErr_SetString(PyExc_ValueError, "Invalid match");
-        return NULL;
-    }else if (r == -ENOMEM) {
-        PyErr_SetString(PyExc_MemoryError, "Not enough memory");
-        return NULL;
-    }else if (r < 0) {
-        PyErr_SetString(PyExc_RuntimeError, "Error adding match");
-        return NULL;
+        r = sd_journal_add_match(self->j, match, match_len);
+        free(match);
+        if (r == -EINVAL) {
+            PyErr_SetString(PyExc_ValueError, "Invalid match");
+            return NULL;
+        }else if (r == -ENOMEM) {
+            PyErr_SetString(PyExc_MemoryError, "Not enough memory");
+            return NULL;
+        }else if (r < 0) {
+            PyErr_SetString(PyExc_RuntimeError, "Error adding match");
+            return NULL;
+        }
     }
 
     Py_RETURN_NONE;
@@ -406,10 +458,12 @@ Journalctl_add_messageid_match(Journalctl *self, PyObject *args)
     if (! PyArg_ParseTuple(args, "O", &value))
         return NULL;
 
-    PyObject *arg;
-    arg = Py_BuildValue("sO", "MESSAGE_ID", value);
-    Journalctl_add_match(self, arg);
+    PyObject *arg, *keywds;
+    arg = PyTuple_New(0);
+    keywds = Py_BuildValue("{s:O}", "MESSAGE_ID", value);
+    Journalctl_add_match(self, arg, keywds);
     Py_DECREF(arg);
+    Py_DECREF(keywds);
     if (PyErr_Occurred())
         return NULL;
     Py_RETURN_NONE;
@@ -773,12 +827,14 @@ Journalctl_log_level(Journalctl *self, PyObject *args)
     }
     int i;
     char level_str[2];
-    PyObject *arg;
+    PyObject *arg, *keywds;
     for(i = 0; i <= level; i++) {
         sprintf(level_str, "%i", i);
-        arg = Py_BuildValue("(ss)", "PRIORITY", level_str);
-        Journalctl_add_match(self, arg);
+        arg = PyTuple_New(0);
+        keywds = Py_BuildValue("{s:s}", "PRIORITY", level_str);
+        Journalctl_add_match(self, arg, keywds);
         Py_DECREF(arg);
+        Py_DECREF(keywds);
         if (PyErr_Occurred())
             return NULL;
     }
@@ -805,10 +861,12 @@ Journalctl_this_boot(Journalctl *self, PyObject *args)
     char bootid[33];
     sd_id128_to_string(sd_id, bootid);
 
-    PyObject *arg;
-    arg = Py_BuildValue("(ss)", "_BOOT_ID", bootid);
-    Journalctl_add_match(self, arg);
+    PyObject *arg, *keywds;
+    arg = PyTuple_New(0);
+    keywds = Py_BuildValue("{s:s}", "_BOOT_ID", bootid);
+    Journalctl_add_match(self, arg, keywds);
     Py_DECREF(arg);
+    Py_DECREF(keywds);
     if (PyErr_Occurred())
         return NULL;
 
@@ -835,10 +893,12 @@ Journalctl_this_machine(Journalctl *self, PyObject *args)
     char machineid[33];
     sd_id128_to_string(sd_id, machineid);
 
-    PyObject *arg;
-    arg = Py_BuildValue("(ss)", "_MACHINE_ID", machineid);
-    Journalctl_add_match(self, arg);
+    PyObject *arg, *keywds;
+    arg = PyTuple_New(0);
+    keywds = Py_BuildValue("{s:s}", "_MACHINE_ID", machineid);
+    Journalctl_add_match(self, arg, keywds);
     Py_DECREF(arg);
+    Py_DECREF(keywds);
     if (PyErr_Occurred())
         return NULL;
 
@@ -968,7 +1028,7 @@ static PyMethodDef Journalctl_methods[] = {
     Journalctl_get_next__doc__},
     {"get_previous", (PyCFunction)Journalctl_get_previous, METH_VARARGS,
     Journalctl_get_previous__doc__},
-    {"add_match", (PyCFunction)Journalctl_add_match, METH_VARARGS,
+    {"add_match", (PyCFunction)Journalctl_add_match, METH_VARARGS|METH_KEYWORDS,
     Journalctl_add_match__doc__},
     {"add_messageid_match", (PyCFunction)Journalctl_add_messageid_match,
     METH_VARARGS, Journalctl_add_messageid_match__doc__},
