@@ -395,49 +395,6 @@ Journalctl_add_match(Journalctl *self, PyObject *args)
     Py_RETURN_NONE;
 }
 
-PyDoc_STRVAR(Journalctl_add_matches__doc__,
-"add_matches(dictionary) -> None\n\n"
-"Add a matches to filter journal log entries. Argument must be dict\n"
-"type, where key represents the field.");
-static PyObject *
-Journalctl_add_matches(Journalctl *self, PyObject *args)
-{
-    PyObject *dict;
-    if (! PyArg_ParseTuple(args, "O", &dict))
-        return NULL;
-    if (!PyDict_Check(dict)) {
-        Py_XDECREF(dict);
-        PyErr_SetString(PyExc_ValueError, "Argument must be dictionary type");
-        return NULL;
-    }
-
-    // First must check all are strings
-    Py_ssize_t pos=0;
-    PyObject *key, *value;
-    while (PyDict_Next(dict, &pos, &key, &value)) {
-#if PY_MAJOR_VERSION >=3
-        if (!((PyUnicode_Check(key) || PyBytes_Check(key)) && (PyUnicode_Check(value) || PyBytes_Check(value)))) {
-#else
-        if (!((PyUnicode_Check(key) || PyString_Check(key)) && (PyUnicode_Check(value) || PyString_Check(value)))) {
-#endif
-            PyErr_SetString(PyExc_ValueError, "Dictionary keys and values must be strings");
-            return NULL;
-        }
-    }
-    pos = 0; //Back to start of dictionary
-    PyObject *arg;
-    while (PyDict_Next(dict, &pos, &key, &value)) {
-        arg = Py_BuildValue("OO", key, value);
-        Journalctl_add_match(self, arg);
-        Py_DECREF(arg);
-        if (PyErr_Occurred())
-            return NULL;
-    }
-
-    Py_DECREF(dict);
-    Py_RETURN_NONE;
-}
-
 PyDoc_STRVAR(Journalctl_add_messageid_match__doc__,
 "add_messageid_match(messageid) -> None\n\n"
 "Equivalent to add_match(\"MESSAGE_ID\", messageid).\n"
@@ -1013,8 +970,6 @@ static PyMethodDef Journalctl_methods[] = {
     Journalctl_get_previous__doc__},
     {"add_match", (PyCFunction)Journalctl_add_match, METH_VARARGS,
     Journalctl_add_match__doc__},
-    {"add_matches", (PyCFunction)Journalctl_add_matches, METH_VARARGS,
-    Journalctl_add_matches__doc__},
     {"add_messageid_match", (PyCFunction)Journalctl_add_messageid_match,
     METH_VARARGS, Journalctl_add_messageid_match__doc__},
     {"add_disjunction", (PyCFunction)Journalctl_add_disjunction, METH_NOARGS,
