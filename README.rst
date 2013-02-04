@@ -66,6 +66,7 @@ True
 >>> bootid = entry['_BOOT_ID']
 >>> journal.get_next(5) == entry
 False
+>>> journal.add_match(_BOOT_ID=bootid)
 >>> journal.seek_monotonic(int(monotonic.total_seconds()*1E6), bootid)
 >>> journal.get_next() == entry
 True
@@ -95,7 +96,6 @@ True
 
 Known Issues
 ------------
-* `seek_monotonic` seems to ignore `bootid` parameter. Can use seek monotonic by setting "_BOOT_ID" filter. Currently suspect this is issue with systemd c API `sd_journal_seek_monotonic_usec`...
 
 TODO
 ----
