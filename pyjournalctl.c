@@ -369,7 +369,14 @@ Journalctl_add_match(Journalctl *self, PyObject *args, PyObject *keywds)
         PyObject *arg;
         arg = PySequence_Fast_GET_ITEM(args, i);
         if (PyUnicode_Check(arg)) {
+#if PY_MINOR_VERSION >=3
             arg_match = PyUnicode_AsUTF8AndSize(arg, &arg_match_len);
+#else
+            PyObject *temp;
+            temp = PyUnicode_AsUTF8String(arg);
+            PyBytes_AsStringAndSize(temp, &arg_match, &arg_match_len);
+            Py_DECREF(temp);
+#endif
         }else if (PyBytes_Check(arg)) {
             PyBytes_AsStringAndSize(arg, &arg_match, &arg_match_len);
         }else{
@@ -404,14 +411,28 @@ Journalctl_add_match(Journalctl *self, PyObject *args, PyObject *keywds)
     while (PyDict_Next(keywds, &pos, &key, &value)) {
 #if PY_MAJOR_VERSION >=3
         if (PyUnicode_Check(key)) {
+#if PY_MINOR_VERSION >=3
             match_key = PyUnicode_AsUTF8AndSize(key, &match_key_len);
+#else
+            PyObject *temp2;
+            temp2 = PyUnicode_AsUTF8String(key);
+            PyBytes_AsStringAndSize(temp2, &match_key, &match_key_len);
+            Py_DECREF(temp2);
+#endif
         }else if (PyBytes_Check(key)) {
             PyBytes_AsStringAndSize(key, &match_key, &match_key_len);
         }else{
             PyErr_SetString(PyExc_TypeError, "expected bytes or string");
         }
         if (PyUnicode_Check(value)) {
+#if PY_MINOR_VERSION >=3
             match_value = PyUnicode_AsUTF8AndSize(value, &match_value_len);
+#else
+            PyObject *temp3;
+            temp3 = PyUnicode_AsUTF8String(value);
+            PyBytes_AsStringAndSize(temp3, &match_value, &match_value_len);
+            Py_DECREF(temp3);
+#endif
         }else if (PyBytes_Check(value)) {
             PyBytes_AsStringAndSize(value, &match_value, &match_value_len);
         }else{
