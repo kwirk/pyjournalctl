@@ -31,10 +31,6 @@ _PID: 1
 MESSAGE: ...
 >>>
 >>> journal.flush_matches()
->>> journal.add_messageid_match(pyjournalctl.SD_MESSAGE_JOURNAL_START)
->>> print(journal.get_next()['MESSAGE'])
-Journal started
->>> journal.flush_matches()
 >>> journal.seek(100) # 100 entries from start
 >>> journal.add_match("_TRANSPORT=kernel")
 >>> journal.add_disjunction() # OR next matches
