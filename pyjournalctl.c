@@ -104,13 +104,14 @@ Journalctl_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 }
 
 PyDoc_STRVAR(Journalctl__doc__,
-"Journalctl([flags][, default_call][, call_dict][,path]) -> Journalctl instance\n\n"
+"Journalctl([flags][, default_call][, call_dict][,path]) -> ...\n"
+"Journalctl instance\n\n"
 "Returns instance of Journalctl, which allows filtering and return\n"
 "of journal entries.\n"
 "Argument `flags` sets open flags of the journal, which can be one\n"
-"of, or ORed combination of: SD_JOURNAL_LOCAL_ONLY (default) opens\n"
-"journal on local machine only; SD_JOURNAL_RUNTIME_ONLY opens only\n"
-"volatile journal files; and SD_JOURNAL_SYSTEM_ONLY opens only\n"
+"of, or ORed combination of constants: LOCAL_ONLY (default) opens\n"
+"journal on local machine only; RUNTIME_ONLY opens only\n"
+"volatile journal files; and SYSTEM_ONLY opens only\n"
 "journal files of system services and the kernel.\n"
 "Argument `default_call` must be a callable that accepts one\n"
 "argument which is string/bytes value of a field and returns\n"
@@ -712,9 +713,9 @@ PyDoc_STRVAR(Journalctl_wait__doc__,
 "is the maximum number of seconds to wait before returning\n"
 "regardless if journal has changed. If `timeout` is not given or is\n"
 "0, then it will block forever.\n"
-"Will return: SD_JOURNAL_NOP if no change; SD_JOURNAL_APPEND if new\n"
+"Will return constants: NOP if no change; APPEND if new\n"
 "entries have been added to the end of the journal; and\n"
-"SD_JOURNAL_INVALIDATE if journal files have been added or removed.");
+"INVALIDATE if journal files have been added or removed.");
 static PyObject *
 Journalctl_wait(Journalctl *self, PyObject *args, PyObject *keywds)
 {
@@ -1174,12 +1175,12 @@ initpyjournalctl(void)
     Py_INCREF(&JournalctlType);
     PyModule_AddObject(m, "Journalctl", (PyObject *)&JournalctlType);
     PyModule_AddStringConstant(m, "__version__", "0.7.0");
-    PyModule_AddIntConstant(m, "SD_JOURNAL_NOP", SD_JOURNAL_NOP);
-    PyModule_AddIntConstant(m, "SD_JOURNAL_APPEND", SD_JOURNAL_APPEND);
-    PyModule_AddIntConstant(m, "SD_JOURNAL_INVALIDATE", SD_JOURNAL_INVALIDATE);
-    PyModule_AddIntConstant(m, "SD_JOURNAL_LOCAL_ONLY", SD_JOURNAL_LOCAL_ONLY);
-    PyModule_AddIntConstant(m, "SD_JOURNAL_RUNTIME_ONLY", SD_JOURNAL_RUNTIME_ONLY);
-    PyModule_AddIntConstant(m, "SD_JOURNAL_SYSTEM_ONLY", SD_JOURNAL_SYSTEM_ONLY);
+    PyModule_AddIntConstant(m, "NOP", SD_JOURNAL_NOP);
+    PyModule_AddIntConstant(m, "APPEND", SD_JOURNAL_APPEND);
+    PyModule_AddIntConstant(m, "INVALIDATE", SD_JOURNAL_INVALIDATE);
+    PyModule_AddIntConstant(m, "LOCAL_ONLY", SD_JOURNAL_LOCAL_ONLY);
+    PyModule_AddIntConstant(m, "RUNTIME_ONLY", SD_JOURNAL_RUNTIME_ONLY);
+    PyModule_AddIntConstant(m, "SYSTEM_ONLY", SD_JOURNAL_SYSTEM_ONLY);
 
     /* Message Constants */
     PyModule_AddStringConstant(m, "SD_MESSAGE_JOURNAL_START", SD_ID128_CONST_STR(SD_MESSAGE_JOURNAL_START));
