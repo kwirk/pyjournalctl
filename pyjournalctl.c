@@ -795,9 +795,9 @@ Journalctl_iternext(PyObject *self)
 
 #ifdef SD_JOURNAL_FOREACH_UNIQUE
 PyDoc_STRVAR(Journalctl_query_unique__doc__,
-"query_unique(field) -> list of values\n\n"
-"Returns list of unique values in journal for given `field`.\n"
-"Note this currently does not respect any set matches.");
+"query_unique(field) -> a set of values\n\n"
+"Returns a set of unique values in journal for given `field`.\n"
+"Note this does not respect any journal matches.");
 static PyObject *
 Journalctl_query_unique(Journalctl *self, PyObject *args)
 {
@@ -823,8 +823,8 @@ Journalctl_query_unique(Journalctl *self, PyObject *args)
     const void *uniq;
     size_t uniq_len;
     const char *delim_ptr;
-    PyObject *list, *key, *value;
-    list = PyList_New(0);
+    PyObject *value_set, *key, *value;
+    value_set = PySet_New(0);
 
 #if PY_MAJOR_VERSION >=3
     key = PyUnicode_FromString(query);
@@ -835,11 +835,11 @@ Journalctl_query_unique(Journalctl *self, PyObject *args)
     SD_JOURNAL_FOREACH_UNIQUE(self->j, uniq, uniq_len) {
         delim_ptr = memchr(uniq, '=', uniq_len);
         value = Journalctl___process_field(self, key, delim_ptr + 1, (const char*) uniq + uniq_len - (delim_ptr + 1));
-        PyList_Append(list, value);
+        PySet_Add(value_set, value);
         Py_DECREF(value);
     }
     Py_DECREF(key);
-    return list;
+    return value_set;
 }
 #endif //def SD_JOURNAL_FOREACH_UNIQUE
 

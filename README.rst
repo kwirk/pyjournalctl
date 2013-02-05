@@ -79,8 +79,6 @@ True
 >>> systemd_units = journal.query_unique("_SYSTEMD_UNIT")
 >>> print("Unique systemd units in journal: %s" % ', '.join(systemd_units)) # doctest: +ELLIPSIS
 Unique systemd units in journal: ...
->>> len(systemd_units) == len(set(systemd_units))
-True
 >>> journal.flush_matches()
 >>> journal.this_boot() # Only log entries from this boot
 >>> journal.seek(0) # First entry
