@@ -531,9 +531,10 @@ Journalctl_flush_matches(Journalctl *self, PyObject *args)
 PyDoc_STRVAR(Journalctl_seek__doc__,
 "seek(offset[, whence]) -> None\n\n"
 "Seek through journal by `offset` number of entries. Argument\n"
-"`whence` defines what the offset is relative to: 0 (default) is\n"
-"from first match in journal; 1 from current position; and 2 is from\n"
-"last match in journal.");
+"`whence` defines what the offset is relative to:\n"
+"os.SEEK_SET (default) from first match in journal;\n"
+"os.SEEK_CUR from current position in journal;\n"
+"and os.SEEK_END is from last match in journal.");
 static PyObject *
 Journalctl_seek(Journalctl *self, PyObject *args, PyObject *keywds)
 {

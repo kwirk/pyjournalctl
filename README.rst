@@ -47,7 +47,8 @@ True
 >>>
 >>> cursor = entry['__CURSOR'] # Cursor is unique reference
 >>> journal.flush_matches()
->>> journal.seek(0,2) # End of journal
+>>> import os
+>>> journal.seek(0, os.SEEK_END) # End of journal
 >>> entry2 = journal.get_previous()
 >>> entry2['__CURSOR'] == cursor
 False
@@ -71,7 +72,7 @@ False
 >>> journal.get_next() == entry
 True
 >>> journal.flush_matches()
->>> journal.seek(-1000,2) # Last 1000 entries
+>>> journal.seek(-1000, os.SEEK_END) # Last 1000 entries
 >>> priorities = set(range(0,5))
 >>> journal.log_level(4) # Log level from 0 - 4
 >>> priorities >= set(entry['PRIORITY'] for entry in journal)
@@ -83,11 +84,11 @@ Unique systemd units in journal: ...
 >>> journal.this_boot() # Only log entries from this boot
 >>> journal.seek(0) # First entry
 >>> entry = journal.get_next()
->>> journal.seek(0,2) # Last entry
+>>> journal.seek(0, os.SEEK_END) # Last entry
 >>> journal.get_previous()['_BOOT_ID'] == entry['_BOOT_ID']
 True
 >>> journal.flush_matches()
->>> journal.seek(-1000,2) # Last 1000 entries
+>>> journal.seek(-1000, os.SEEK_END) # Last 1000 entries
 >>> journal.this_machine() # Only log entries for this machine
 >>> len(set(entry['_MACHINE_ID'] for entry in journal))
 1
