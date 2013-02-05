@@ -104,7 +104,7 @@ Journalctl_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 }
 
 PyDoc_STRVAR(Journalctl__doc__,
-"Journalctl([flags][, default_call][, call_dict]) -> Journalctl instance\n\n"
+"Journalctl([flags][, default_call][, call_dict][,path]) -> Journalctl instance\n\n"
 "Returns instance of Journalctl, which allows filtering and return\n"
 "of journal entries.\n"
 "Argument `flags` sets open flags of the journal, which can be one\n"
@@ -118,16 +118,20 @@ PyDoc_STRVAR(Journalctl__doc__,
 "Argument `call_dict` is a dictionary where the key represents\n"
 "a field name, and value is a callable as per `default_call`.\n"
 "A set of sane defaults for `default_call` and `call_dict` are\n"
-"present.");
+"present.\n"
+"Argument `path` is the directory of journal files. Note that\n"
+"currently flags are ignored when `path` is present as they are\n"
+" not relevant.");
 static int
 Journalctl_init(Journalctl *self, PyObject *args, PyObject *keywds)
 {
     int flags=SD_JOURNAL_LOCAL_ONLY;
+    char *path=NULL;
     PyObject *default_call=NULL, *call_dict=NULL;
 
-    static char *kwlist[] = {"flags", "default_call", "call_dict", NULL};
-    if (! PyArg_ParseTupleAndKeywords(args, keywds, "|iOO", kwlist,
-                                      &flags, &default_call, &call_dict))
+    static char *kwlist[] = {"flags", "default_call", "call_dict", "path", NULL};
+    if (! PyArg_ParseTupleAndKeywords(args, keywds, "|iOOs", kwlist,
+                                      &flags, &default_call, &call_dict, &path))
         return 1;
 
     if (default_call) {
@@ -156,11 +160,15 @@ Journalctl_init(Journalctl *self, PyObject *args, PyObject *keywds)
     }
 
     int r;
-    Py_BEGIN_ALLOW_THREADS
-    r = sd_journal_open(&self->j, flags);
-    Py_END_ALLOW_THREADS
+    if (path) {
+        r = sd_journal_open_directory(&self->j, path, 0);
+    }else{
+        Py_BEGIN_ALLOW_THREADS
+        r = sd_journal_open(&self->j, flags);
+        Py_END_ALLOW_THREADS
+    }
     if (r == -EINVAL) {
-        PyErr_SetString(PyExc_ValueError, "Invalid flags");
+        PyErr_SetString(PyExc_ValueError, "Invalid flags or path");
         return -1;
     }else if (r == -ENOMEM) {
         PyErr_SetString(PyExc_MemoryError, "Not enough memory");
