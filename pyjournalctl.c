@@ -640,7 +640,7 @@ Journalctl_seek_realtime(Journalctl *self, PyObject *args)
 PyDoc_STRVAR(Journalctl_seek_monotonic__doc__,
 "seek_monotonic(monotonic[, bootid]) -> None\n\n"
 "Seek to nearest matching journal entry to `monotonic`. Argument\n"
-"`monotonic` is an integer timestamp from boot in usecs, or a\n"
+"`monotonic` is an timestamp from boot in secs, or a\n"
 "timedelta instance.\n"
 "Argument `bootid` is a string representing which boot the\n"
 "monotonic time is reference to. Defaults to current bootid.");
@@ -658,16 +658,19 @@ Journalctl_seek_monotonic(Journalctl *self, PyObject *args)
         temp = PyObject_CallMethod(arg, "total_seconds", NULL);
         timestamp = (uint64_t) (PyFloat_AsDouble(temp) * 1E6);
         Py_DECREF(temp);
+    }else if (PyFloat_Check(arg)) {
+        timestamp = (uint64_t) (PyFloat_AsDouble(arg) * 1E6);
     }else if (PyLong_Check(arg)) {
-        timestamp = PyLong_AsUnsignedLongLong(arg);
+        timestamp = PyLong_AsUnsignedLongLong(arg) * (uint64_t) 1E6;
 #if PY_MAJOR_VERSION <3
     }else if (PyInt_Check(arg)) {
-        timestamp = PyInt_AsUnsignedLongLongMask(arg);
+        timestamp = PyInt_AsUnsignedLongLongMask(arg) * (uint64_t) 1E6;
 #endif
+
     }
 
     if ((int64_t) timestamp < 0LL) {
-        PyErr_SetString(PyExc_ValueError, "Time must be positive integer or timedelta instance");
+        PyErr_SetString(PyExc_ValueError, "Time must be positive number or timedelta instance");
         return NULL;
     }
 
