@@ -20,7 +20,7 @@ GNU Lesser General Public License v2.1
 Usage Examples
 --------------
 >>> import pyjournalctl
->>> journal = pyjournalctl.Journalctl()
+>>> journal = pyjournalctl.Journal()
 >>> journal.add_match(PRIORITY="5", _PID="1")
 >>> entry = journal.get_next()
 >>> print("PRIORITY: %(PRIORITY)i" % entry)
